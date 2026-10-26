@@ -1,0 +1,84 @@
+package courseproject.factoryfeud;
+
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
+/** Immutable command-line configuration for paired Factory Feud experiments. */
+public final class FactoryFeudExperimentConfig {
+    public static final int DEFAULT_MATCH_COUNT = 20;
+    public static final int DEFAULT_CYCLES = 500;
+    public static final long DEFAULT_SEED = 584L;
+    public static final String DEFAULT_CSV = "results/factory-feud-experiments.csv";
+
+    private final int matchCount;
+    private final int cycles;
+    private final String mapPath;
+    private final long seed;
+    private final Path csvPath;
+
+    public FactoryFeudExperimentConfig(
+            int matchCount, int cycles, String mapPath, long seed, Path csvPath) {
+        if (matchCount <= 0 || matchCount % 2 != 0) {
+            throw new IllegalArgumentException("match count must be a positive even number");
+        }
+        if (cycles <= 0) throw new IllegalArgumentException("cycles must be positive");
+        if (mapPath == null || mapPath.trim().isEmpty()) {
+            throw new IllegalArgumentException("map path cannot be blank");
+        }
+        if (csvPath == null) throw new IllegalArgumentException("CSV path cannot be null");
+        this.matchCount = matchCount;
+        this.cycles = cycles;
+        this.mapPath = mapPath;
+        this.seed = seed;
+        this.csvPath = csvPath;
+    }
+
+    public static FactoryFeudExperimentConfig defaults() {
+        return new FactoryFeudExperimentConfig(DEFAULT_MATCH_COUNT, DEFAULT_CYCLES,
+                FactoryFeudScenario.DEFAULT_MAP, DEFAULT_SEED, Paths.get(DEFAULT_CSV));
+    }
+
+    public static FactoryFeudExperimentConfig parse(String[] args) {
+        FactoryFeudExperimentConfig defaults = defaults();
+        int matches = defaults.matchCount;
+        int cycles = defaults.cycles;
+        String map = defaults.mapPath;
+        long seed = defaults.seed;
+        Path csv = defaults.csvPath;
+
+        for (int index = 0; index < args.length; index++) {
+            String option = args[index];
+            if (index + 1 >= args.length) {
+                throw new IllegalArgumentException("Missing value for " + option);
+            }
+            String value = args[++index];
+            if ("--matches".equals(option)) matches = Integer.parseInt(value);
+            else if ("--cycles".equals(option)) cycles = Integer.parseInt(value);
+            else if ("--map".equals(option)) map = value;
+            else if ("--seed".equals(option)) seed = Long.parseLong(value);
+            else if ("--csv".equals(option)) csv = Paths.get(value);
+            else throw new IllegalArgumentException("Unknown option: " + option);
+        }
+        return new FactoryFeudExperimentConfig(matches, cycles, map, seed, csv);
+    }
+
+    public int getMatchCount() {
+        return matchCount;
+    }
+
+    public int getCycles() {
+        return cycles;
+    }
+
+    public String getMapPath() {
+        return mapPath;
+    }
+
+    public long getSeed() {
+        return seed;
+    }
+
+    public Path getCsvPath() {
+        return csvPath;
+    }
+}

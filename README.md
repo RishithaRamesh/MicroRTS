@@ -2,6 +2,11 @@
     <img src="microrts-text.png" width="500px"/>
 </p>
 
+ant clean build
+ant test
+ant factory-feud-ai-smoke
+ant factory-feud-visual
+
 **Aug 11, 2025: This project has been deprecated due to a lack of wide spread community use, and is no longer planned to receive any additional updates or support.**
 
 [![Build Status](https://travis-ci.org/douglasrizzo/microrts.svg?branch=master)](https://travis-ci.org/douglasrizzo/microrts)
@@ -97,3 +102,247 @@ java -cp microrts.jar rts.MicroRTS -f my_file.properties
 ## Instructions
 
 ![instructions image](https://raw.githubusercontent.com/santiontanon/microrts/master/help.png)
+
+## CSC 584 Factory Feud
+
+This repository also contains the project-authored Factory Feud implementation.
+Two teams each receive four mobile Workers and one Base/factory.
+Neutral Resources represent cocoa. Matches run for a fixed number of cycles and
+are won by delivering the most cocoa; equal delivery totals are ties.
+
+### Code ownership
+
+- The existing `src/rts`, `src/ai`, `src/gui`, and related packages are upstream
+  microRTS code.
+- `src/courseproject/factoryfeud` is project-authored Factory Feud code.
+- `test/courseproject` contains project-authored tests.
+- `maps/factory-feud` contains project-authored maps.
+- Factory Feud reuses upstream movement, combat, harvest, return, map loading,
+  and action-validation mechanics. No upstream engine source was changed for
+  Factory Feud.
+
+The Phase 1 smoke match temporarily uses two upstream `WorkerRush` controllers
+only to exercise the scenario and match loop. These are not the future
+Factory Feud baseline or adaptive strategy.
+
+### Build and test
+
+From the repository root:
+
+```shell
+ant clean build
+ant test
+```
+
+The normal `ant test` target includes the focused Factory Feud JUnit suite.
+
+### Run one headless match
+
+Run the default 500-cycle smoke match:
+
+```shell
+ant factory-feud-smoke
+```
+
+Override the duration when needed:
+
+```shell
+ant -Dfactoryfeud.cycles=1000 factory-feud-smoke
+```
+
+After compiling, the equivalent direct Java command is:
+
+```shell
+java -cp "lib/*:bin" courseproject.factoryfeud.FactoryFeudSmoke 500
+```
+
+The command prints final cycles, both delivered-cocoa scores, and the winner;
+winner `-1` denotes a tie.
+
+### Run the visual match on macOS
+
+From Terminal in the repository root, launch the Swing runner from a logged-in
+macOS desktop session:
+
+```shell
+ant factory-feud-visual
+```
+
+By default, the window renders the project-authored 12x12 control map through
+microRTS's existing Swing visualizer. Player 0 is `AdaptiveRoleAI` and Player 1 is `FixedRoleAI`.
+Its HUD shows delivered-cocoa scores and remaining cycles; the side panel shows
+each surviving Worker's ID and role, the role legend, and recent adaptive
+reassignment reasons. The runner uses `FactoryFeudScenario` and delegates every
+cycle to `FactoryFeudMatch`, so delivery scoring and the production-action
+filter are the same as in the headless match. The selected map name and dimensions
+appear in the window title and HUD, and the full map path is printed in Terminal.
+Close the window after the match to return to the shell.
+
+To change the duration or animation speed (milliseconds per cycle):
+
+```shell
+ant -Dfactoryfeud.cycles=1000 -Dfactoryfeud.visual.delay=75 factory-feud-visual
+```
+
+Select any validated Factory Feud map with `factoryfeud.visual.map`. For example,
+from macOS Terminal:
+
+```shell
+ant -Dfactoryfeud.visual.map=maps/factory-feud/factory-feud-narrow-passage-12x12.xml \
+  factory-feud-visual
+
+ant -Dfactoryfeud.visual.map=maps/factory-feud/factory-feud-exposed-routes-14x12.xml \
+  factory-feud-visual
+```
+
+The runner requires a graphical session. It will not launch from a headless SSH
+session or when Java is forced into headless mode.
+
+The old upstream `WorkerRush` versus `WorkerRush` placeholder visualization is
+retained only as a Phase 1 regression option:
+
+```shell
+ant factory-feud-visual-placeholder
+```
+
+### Phase 2 role agents
+
+Phase 2 adds two project-authored strategies. `FixedRoleAI` assigns one Worker
+each to Collector, Escort, Attacker, and Defender by stable unit ID and never
+reallocates them. `AdaptiveRoleAI` uses the same project-owned low-level role
+behaviors but has an independent allocation policy based on cocoa availability,
+score, remaining time, threats, endangered collectors, and surviving units. It
+uses deterministic tie-breaking, a reassignment cooldown, and an immediate
+factory-defense override.
+
+Run one complete headless AdaptiveRoleAI versus FixedRoleAI smoke match:
+
+```shell
+ant factory-feud-ai-smoke
+```
+
+Override its duration with the same property used by the Phase 1 smoke target:
+
+```shell
+ant -Dfactoryfeud.cycles=1000 factory-feud-ai-smoke
+```
+
+The older `factory-feud-phase2` target remains as an alias. Output includes both
+scores, winner, surviving units, adaptive role-change events, proposed illegal
+action count, filtered production count, potential stuck-unit diagnostics, and
+wall-clock runtime. A single match is a functional verification only and is not
+statistical evidence.
+
+### Phase 3A scoring validation and experiments
+
+Run the default 20-match paired pilot (500 cycles per match):
+
+```shell
+ant factory-feud-experiments
+```
+
+Each seed is used for two consecutive matches, with `AdaptiveRoleAI` on player
+0 and then player 1. The match count must therefore be a positive even number.
+Override all experiment inputs with Ant properties:
+
+```shell
+ant -Dfactoryfeud.experiment.matches=20 \
+  -Dfactoryfeud.cycles=500 \
+  -Dfactoryfeud.experiment.map=maps/factory-feud/factory-feud-12x12.xml \
+  -Dfactoryfeud.experiment.seed=584 \
+  -Dfactoryfeud.experiment.csv=results/factory-feud-experiments.csv \
+  factory-feud-experiments
+```
+
+The CSV contains match ID, map, pair seed, adaptive side, player and strategy
+scores, explicit outcome (`ADAPTIVE_WIN`, `FIXED_WIN`, or `DRAW`), completed
+cycles, player and strategy survivor counts, adaptive role reassignments,
+illegal-action count, and runtime. The console summary reports win/draw/loss
+counts, adaptive win rate (draws remain in the denominator), mean cocoa by
+strategy, mean score differential, and mean runtime.
+
+The current 12x12 map starts both players at zero delivered cocoa and contains
+six 20-unit cocoa nodes (120 cocoa total). Delivery scores are deltas from each
+player's balance at match-controller construction, so preloaded resources are
+not scored. In the observed 500-cycle symmetric match, both strategies deliver
+16 cocoa while cocoa remains on the map. The repeated 16-16 result is therefore
+not a resource ceiling or starting-balance scoring bug; it follows from the
+symmetric collector routes and deterministic behavior. Combat can reduce
+survivors without disrupting those routes. A fixed agent against `PassiveAI`
+does produce a non-tied delivery result, confirming that the rules permit score
+differences.
+
+For controlled reproduction, the runner creates a fresh map, match controller,
+and independent AI instances for every row and seeds the public microRTS
+`UnitAction` random generator. With the current fixed-damage unit table,
+cancel-both movement-conflict policy, and deterministic project agents, the
+recorded simulation fields repeat in automated tests; wall-clock runtime is
+intentionally excluded from equality checks. The engine also contains a private
+static random generator for random movement-conflict policies, which this runner
+cannot seed through a supported API. Switching to such a policy, variable
+damage, or a stochastic AI would require additional reproducibility work.
+
+This Phase 3A runner evaluates one configured map per invocation. Repeating the
+same deterministic map and policies under different recorded seeds does not
+create independent statistical trials. Procedural generation, multi-map
+evaluation, and map-property analysis remain future work.
+
+### Phase 3B controlled scenarios
+
+The Phase 3B evaluation set retains the original map as its control and includes
+four manually designed, project-authored variation maps:
+
+- `factory-feud-contested-center-12x12.xml`: all cocoa is concentrated in
+  mirrored central pairs, forcing attackers and escorts into collector routes.
+- `factory-feud-narrow-passage-12x12.xml`: terrain and cocoa form a single
+  traversable central lane where collectors can be intercepted.
+- `factory-feud-narrow-passage-refined-12x12.xml`: a two-cell terrain corridor
+  connects two contested cocoa alcoves, with one alternative cocoa location on
+  each side; it uses four nodes while preserving the control's 120 total cocoa.
+- `factory-feud-exposed-routes-14x12.xml`: near, central, and remote cocoa have
+  different route lengths and exposure while remaining rotationally symmetric.
+
+`FactoryFeudScenario` validates every loaded map's player, unit, factory, and
+positive cocoa-node count, rejects overlapping or terrain-embedded units,
+supports an optional caller-selected exact cocoa count, requires positive cocoa
+quantities, and verifies that every Worker shares a terrain component with its
+factory and every cocoa node. Tests also require each registered evaluation map
+to have either left-right or 180-degree player-swapped symmetry.
+
+The control map retains upstream Workers' one hit point. Its one-hit combat
+made escort and defense reactions too late to protect a collector. The four
+tactical maps therefore set each starting Worker instance to two hit points;
+the upstream `Worker` type and combat engine are unchanged. Since Workers deal
+one damage per attack, two is the smallest durability that provides a reaction
+interval after the first hit. The controlled tactical test verifies that an
+escort can use this window to remove an interceptor and preserve delivery; at
+one hit point the collector is lost. This adjustment is symmetric for both
+teams and does not weaken `FixedRoleAI`.
+
+Run 20 side-swapped matches on each map by changing only the existing runner's
+map and CSV properties. For example:
+
+```shell
+ant -Dfactoryfeud.experiment.matches=20 \
+  -Dfactoryfeud.experiment.map=maps/factory-feud/factory-feud-contested-center-12x12.xml \
+  -Dfactoryfeud.experiment.csv=results/factory-feud-contested.csv \
+  factory-feud-experiments
+```
+
+Repeat with these paths:
+
+```text
+maps/factory-feud/factory-feud-12x12.xml
+maps/factory-feud/factory-feud-contested-center-12x12.xml
+maps/factory-feud/factory-feud-narrow-passage-12x12.xml
+maps/factory-feud/factory-feud-narrow-passage-refined-12x12.xml
+maps/factory-feud/factory-feud-exposed-routes-14x12.xml
+```
+
+The aggregate output additionally reports mean casualties, total and mean
+adaptive role reassignments, player-0/player-1 wins, and mean player-0 score
+advantage. Side statistics must be examined alongside strategy statistics;
+geometric symmetry does not guarantee identical deterministic engine outcomes.
+The controlled tactical regression demonstrates that an interceptor can stop a
+carried-cocoa delivery and that an escort can eliminate that interceptor and
+restore the delivery.
