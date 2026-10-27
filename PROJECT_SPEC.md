@@ -50,10 +50,10 @@ thrashing. The fixed-role baseline must not call, inherit, or share the
 adaptive role allocator; only low-level movement/action helpers may be shared.
 
 The final Deliverable 1 demonstration uses `FixedRoleAI` as P0 and
-`ThreatAwareAdaptiveRoleAI` as P1. ThreatAware extends the completed adaptive
-allocator with a small immediate-threat tactical override; it does not replace
-or alter `AdaptiveRoleAI`. The controlled evaluation reports both Adaptive and
-ThreatAware against Fixed with paired side swaps.
+`AdaptiveRoleAI` as P1. `AdaptiveRoleAI` extends the preserved utility-based
+`OldAdaptiveRoleAI` allocator with the successful immediate-threat tactical
+override. The controlled evaluation reports `AdaptiveRoleAI` against Fixed with
+paired side swaps.
 
 Phase 1 implements the scenario, delivery scoring, fixed-duration match
 controller, smoke runner, and correctness tests. Phase 2 implements both

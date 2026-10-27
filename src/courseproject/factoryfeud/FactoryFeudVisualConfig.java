@@ -37,7 +37,7 @@ public final class FactoryFeudVisualConfig {
         String mapPath = FactoryFeudScenario.DEFAULT_MAP;
         boolean placeholderMode = false;
         FactoryFeudExperimentConfig.AdaptiveStrategy adaptiveStrategy =
-                FactoryFeudExperimentConfig.AdaptiveStrategy.THREAT_AWARE;
+                FactoryFeudExperimentConfig.AdaptiveStrategy.ADAPTIVE;
 
         if (args.length > 2) {
             // Retain compatibility with the former direct invocation whose third

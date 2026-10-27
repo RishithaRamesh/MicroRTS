@@ -187,7 +187,7 @@ public class FactoryFeudScenarioVariationTest {
         GameState exposedState = exposed.loadScenario(utt);
 
         assertEquals(FactoryFeudScenario.DEFAULT_MAP, defaults.getMapPath());
-        assertEquals(FactoryFeudExperimentConfig.AdaptiveStrategy.THREAT_AWARE,
+        assertEquals(FactoryFeudExperimentConfig.AdaptiveStrategy.ADAPTIVE,
                 defaults.getAdaptiveStrategy());
         assertEquals(14, exposedState.getPhysicalGameState().getWidth());
         assertEquals(12, exposedState.getPhysicalGameState().getHeight());

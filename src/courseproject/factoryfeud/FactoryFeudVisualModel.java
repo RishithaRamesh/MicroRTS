@@ -10,17 +10,17 @@ import rts.units.Unit;
 public final class FactoryFeudVisualModel {
     private static final int EVENT_LINES = 4;
 
-    private final AdaptiveRoleAI adaptive;
+    private final OldAdaptiveRoleAI adaptive;
     private final FixedRoleAI fixed;
     private final int adaptivePlayer;
     private final String matchupLabel;
 
     public FactoryFeudVisualModel(
-            AdaptiveRoleAI adaptive, FixedRoleAI fixed, String matchupLabel) {
+            OldAdaptiveRoleAI adaptive, FixedRoleAI fixed, String matchupLabel) {
         this(adaptive, fixed, 0, matchupLabel);
     }
 
-    public FactoryFeudVisualModel(AdaptiveRoleAI adaptive, FixedRoleAI fixed,
+    public FactoryFeudVisualModel(OldAdaptiveRoleAI adaptive, FixedRoleAI fixed,
             int adaptivePlayer, String matchupLabel) {
         if (adaptivePlayer != 0 && adaptivePlayer != 1) {
             throw new IllegalArgumentException("adaptive player must be 0 or 1");
@@ -52,9 +52,9 @@ public final class FactoryFeudVisualModel {
         text.append("\nLegend\nC Collector  E Escort\nA Attacker   D Defender\n");
         text.append("\nP").append(adaptivePlayer).append(" Adaptive changes: ")
                 .append(adaptive.getRoleChangeCount()).append('\n');
-        if (adaptive instanceof ThreatAwareAdaptiveRoleAI) {
+        if (adaptive instanceof AdaptiveRoleAI) {
             text.append("Tactical overrides: ")
-                    .append(((ThreatAwareAdaptiveRoleAI) adaptive).getTacticalOverrideCount())
+                    .append(((AdaptiveRoleAI) adaptive).getTacticalOverrideCount())
                     .append('\n');
         }
 
@@ -111,10 +111,11 @@ public final class FactoryFeudVisualModel {
     }
 
     private static String compactEvent(String event) {
-        return event.replace(",unit=", "  #")
-                .replace(",from=", " ")
-                .replace(",to=", "->")
-                .replace(",reason=", "\n    ");
+        return event.replace("cycle=", "Cycle ")
+                .replace(",unit=", " | Unit #")
+                .replace(",from=", "\n  ")
+                .replace(",to=", " -> ")
+                .replace(",reason=", "\n  Reason: ");
     }
 
     private static String winnerText(FactoryFeudMatch match) {

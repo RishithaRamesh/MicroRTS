@@ -18,7 +18,7 @@ public final class FactoryFeudPhase2Match {
     public static final int FIXED_PLAYER = 0;
     public static final int ADAPTIVE_PLAYER = 1;
     public static final FactoryFeudExperimentConfig.AdaptiveStrategy DEFAULT_STRATEGY =
-            FactoryFeudExperimentConfig.AdaptiveStrategy.THREAT_AWARE;
+            FactoryFeudExperimentConfig.AdaptiveStrategy.ADAPTIVE;
     private static final int STUCK_THRESHOLD = 50;
 
     private FactoryFeudPhase2Match() {
@@ -33,7 +33,7 @@ public final class FactoryFeudPhase2Match {
                 UnitTypeTable.VERSION_ORIGINAL_FINETUNED,
                 UnitTypeTable.MOVE_CONFLICT_RESOLUTION_CANCEL_BOTH);
         GameState gameState = FactoryFeudScenario.load(utt);
-        AdaptiveRoleAI adaptive = strategy.create(utt, timeLimit);
+        OldAdaptiveRoleAI adaptive = strategy.create(utt, timeLimit);
         FixedRoleAI fixed = new FixedRoleAI(utt);
         FactoryFeudMatch match = new FactoryFeudMatch(gameState, timeLimit, fixed, adaptive);
         ProgressTracker progress = new ProgressTracker(fixed, adaptive);
@@ -51,8 +51,8 @@ public final class FactoryFeudPhase2Match {
         System.out.println("survivingUnitsP1=" + survivingUnits(gameState, 1));
         System.out.println("adaptiveRoleChanges=" + adaptive.getRoleChangeCount());
         for (String change : adaptive.getRoleChangeHistory()) System.out.println("roleChange=" + change);
-        if (adaptive instanceof ThreatAwareAdaptiveRoleAI) {
-            ThreatAwareAdaptiveRoleAI threatAware = (ThreatAwareAdaptiveRoleAI) adaptive;
+        if (adaptive instanceof AdaptiveRoleAI) {
+            AdaptiveRoleAI threatAware = (AdaptiveRoleAI) adaptive;
             System.out.println("tacticalOverrides=" + threatAware.getTacticalOverrideCount());
             for (String event : threatAware.getTacticalOverrideHistory()) {
                 System.out.println("tacticalOverride=" + event);

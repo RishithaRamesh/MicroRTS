@@ -19,14 +19,14 @@ import rts.PhysicalGameState;
 import rts.units.Unit;
 import rts.units.UnitTypeTable;
 
-/** Runs the fixed 20-match, five-map Factory Feud comparison requested for seed 584. */
+/** Runs the fixed 10-match, five-map AdaptiveRoleAI reproducibility suite. */
 public final class FactoryFeudControlledExperimentRunner {
     public static final int CYCLES = 500;
     public static final long SEED = 584L;
     public static final Path DEFAULT_CSV = Paths.get(
-            "results/factory-feud-controlled-seed-584.csv");
+            "results/factory-feud-controlled-renamed-adaptive-seed-584.csv");
     public static final Path DEFAULT_REPORT = Paths.get(
-            "results/factory-feud-controlled-seed-584.md");
+            "results/factory-feud-controlled-renamed-adaptive-seed-584.md");
 
     private static final List<String> MAPS = Collections.unmodifiableList(Arrays.asList(
             FactoryFeudScenario.CONTROL_MAP,
@@ -36,8 +36,7 @@ public final class FactoryFeudControlledExperimentRunner {
             FactoryFeudScenario.REFINED_NARROW_PASSAGE_MAP));
     private static final List<FactoryFeudExperimentConfig.AdaptiveStrategy> STRATEGIES =
             Collections.unmodifiableList(Arrays.asList(
-                    FactoryFeudExperimentConfig.AdaptiveStrategy.ADAPTIVE,
-                    FactoryFeudExperimentConfig.AdaptiveStrategy.THREAT_AWARE));
+                    FactoryFeudExperimentConfig.AdaptiveStrategy.ADAPTIVE));
     private static final int[][] DIRECTIONS = {{0, -1}, {-1, 0}, {1, 0}, {0, 1}};
 
     private FactoryFeudControlledExperimentRunner() {
@@ -205,10 +204,11 @@ public final class FactoryFeudControlledExperimentRunner {
         if (absolute.getParent() != null) Files.createDirectories(absolute.getParent());
         try (BufferedWriter writer = Files.newBufferedWriter(absolute, StandardCharsets.UTF_8)) {
             writer.write("# Factory Feud controlled experiment — seed 584\n\n");
-            writer.write("These are 20 deterministic, single-seed match outcomes, not "
+            writer.write("These are 10 deterministic, single-seed match outcomes, not "
                     + "independent randomized trials. Every match used 500 cycles, microRTS "
                     + "ORIGINAL_FINETUNED unit types, seed 584, and cancel-both movement "
-                    + "conflict resolution. Each map/strategy pairing was side-swapped.\n\n");
+                    + "conflict resolution. AdaptiveRoleAI was side-swapped against "
+                    + "FixedRoleAI on every map.\n\n");
             writer.write("## Map validation and route audit\n\n");
             writer.write("Distances are terrain-only shortest movement steps. Worker arrays "
                     + "are ordered by unit ID; return distance is the shortest cocoa-adjacent "
@@ -265,27 +265,9 @@ public final class FactoryFeudControlledExperimentRunner {
                         strategy.getCommandLineName())));
             }
 
-            writer.write("\n## ThreatAware change by map\n\n");
-            writer.write("Positive cocoa delta and negative death delta favor ThreatAware.\n\n");
-            writer.write("| Map | Δ avg cocoa | Δ worker deaths | Δ wins | Δ losses | Assessment |\n");
-            writer.write("|---|---:|---:|---:|---:|---|\n");
-            for (String map : MAPS) {
-                Aggregate adaptive = aggregates.get(key(map, "adaptive"));
-                Aggregate threat = aggregates.get(key(map, "threat-aware"));
-                double cocoaDelta = threat.averageCocoa() - adaptive.averageCocoa();
-                int deathDelta = threat.workerDeaths - adaptive.workerDeaths;
-                int winDelta = threat.wins - adaptive.wins;
-                int lossDelta = threat.losses - adaptive.losses;
-                writer.write(String.format(Locale.ROOT,
-                        "| %s | %+.2f | %+d | %+d | %+d | %s |%n",
-                        mapName(map), cocoaDelta, deathDelta, winDelta, lossDelta,
-                        assessment(cocoaDelta, deathDelta, winDelta, lossDelta)));
-            }
-
             writer.write("\n## Observed tactical examples\n\n");
             boolean exampleFound = false;
             for (FactoryFeudExperimentRecord record : records) {
-                if (!"threat-aware".equals(record.getAdaptiveStrategy())) continue;
                 if (record.getExampleAttackOverride() != null) {
                     writer.write("- " + mapName(record.getMap()) + ", P"
                             + record.getAdaptiveSide() + " attack: `"
@@ -327,25 +309,11 @@ public final class FactoryFeudControlledExperimentRunner {
     }
 
     private static String displayStrategy(String strategy) {
-        return "threat-aware".equals(strategy) ? "ThreatAware" : "Adaptive";
+        return "old-adaptive".equals(strategy) ? "OldAdaptiveRoleAI" : "AdaptiveRoleAI";
     }
 
     private static String mapName(String path) {
         return Paths.get(path).getFileName().toString();
-    }
-
-    private static String assessment(double cocoaDelta, int deathDelta, int winDelta,
-            int lossDelta) {
-        boolean noWorse = cocoaDelta >= 0 && deathDelta <= 0
-                && winDelta >= 0 && lossDelta <= 0;
-        boolean noBetter = cocoaDelta <= 0 && deathDelta >= 0
-                && winDelta <= 0 && lossDelta >= 0;
-        if (noWorse && (cocoaDelta > 0 || deathDelta < 0
-                || winDelta > 0 || lossDelta < 0)) return "improves";
-        if (noBetter && (cocoaDelta < 0 || deathDelta > 0
-                || winDelta < 0 || lossDelta > 0)) return "regresses";
-        if (!noWorse && !noBetter) return "mixed";
-        return "unchanged";
     }
 
     static final class MapAudit {

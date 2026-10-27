@@ -175,7 +175,7 @@ ant factory-feud-visual
 
 By default, the window renders the project-authored 12x12 control map through
 microRTS's existing Swing visualizer. Player 0 (blue/left) is `FixedRoleAI` and
-Player 1 (pink/right) is `ThreatAwareAdaptiveRoleAI`.
+Player 1 (pink/right) is `AdaptiveRoleAI`.
 Its HUD shows delivered-cocoa scores and remaining cycles; the side panel shows
 each surviving Worker's ID and role, the role legend, and recent adaptive
 reassignment reasons. The runner uses `FactoryFeudScenario` and delegates every
@@ -201,7 +201,7 @@ ant -Dfactoryfeud.visual.map=maps/factory-feud/factory-feud-exposed-routes-14x12
   factory-feud-visual
 ```
 
-To display the base adaptive variant on Player 1 instead, use:
+The default strategy can also be selected explicitly with:
 
 ```shell
 ant -Dfactoryfeud.visual.strategy=adaptive factory-feud-visual
@@ -221,14 +221,16 @@ ant factory-feud-visual-placeholder
 
 Phase 2 adds two project-authored strategies. `FixedRoleAI` assigns one Worker
 each to Collector, Escort, Attacker, and Defender by stable unit ID and never
-reallocates them. `AdaptiveRoleAI` uses the same project-owned low-level role
+reallocates them. `OldAdaptiveRoleAI` contains the utility/count-based dynamic
+allocation policy. `AdaptiveRoleAI` extends it with the successful threat-aware
+tactical attack and retreat behavior while retaining dynamic reassignment. Both
+use the same project-owned low-level role
 behaviors but has an independent allocation policy based on cocoa availability,
 score, remaining time, threats, endangered collectors, and surviving units. It
 uses deterministic tie-breaking, a reassignment cooldown, and an immediate
 factory-defense override.
 
-Run the chosen headless matchup, P0 `FixedRoleAI` versus P1
-`ThreatAwareAdaptiveRoleAI`:
+Run the chosen headless matchup, P0 `FixedRoleAI` versus P1 `AdaptiveRoleAI`:
 
 ```shell
 ant factory-feud-ai-smoke
@@ -240,8 +242,10 @@ Override its duration with the same property used by the Phase 1 smoke target:
 ant -Dfactoryfeud.cycles=1000 factory-feud-ai-smoke
 ```
 
-Use `-Dfactoryfeud.ai.strategy=adaptive` to substitute the base `AdaptiveRoleAI`
-on P1. The default ThreatAware output includes tactical attack and retreat events.
+The default `AdaptiveRoleAI` output includes tactical attack and retreat events.
+Use `-Dfactoryfeud.ai.strategy=old-adaptive` only to run the preserved utility-based
+version on P1. The historical `threat-aware` selector remains an alias for the
+renamed `AdaptiveRoleAI`.
 
 The older `factory-feud-phase2` target remains as an alias. Output includes both
 scores, winner, surviving units, adaptive role-change events, proposed illegal
@@ -301,10 +305,11 @@ ant -Dfactoryfeud.experiment.matches=20 \
   factory-feud-experiments
 ```
 
-Use `-Dfactoryfeud.experiment.strategy=adaptive` (the default) for the original
-workflow, or `-Dfactoryfeud.experiment.strategy=threat-aware` for the tactical
-variant. Threat-aware CSV rows and the console summary include the number of
-tactical overrides. The console summary reports win/draw/loss counts, adaptive-family win
+Use `-Dfactoryfeud.experiment.strategy=adaptive` (the default) for the final
+threat-aware `AdaptiveRoleAI`, or `-Dfactoryfeud.experiment.strategy=old-adaptive`
+for the preserved utility-based class. The historical `threat-aware` selector is
+an alias for `AdaptiveRoleAI`. Tactical CSV rows and the console summary include
+the number of tactical overrides. The console summary reports win/draw/loss counts, adaptive-family win
 rate (draws remain in the denominator), mean cocoa by strategy, mean score
 differential, and mean runtime. Paired rows share a seed and are controlled
 side swaps, not independent statistical samples.
@@ -377,14 +382,15 @@ adaptive role reassignments, player-0/player-1 wins, and mean player-0 score
 advantage. Side statistics must be examined alongside strategy statistics;
 geometric symmetry does not guarantee identical deterministic engine outcomes.
 
-Run the complete recorded 20-match, five-map comparison (Adaptive and
-ThreatAware against Fixed, both side assignments, seed 584, 500 cycles) with:
+Run the final 10-match, five-map `AdaptiveRoleAI` versus `FixedRoleAI`
+reproducibility suite (both side assignments, seed 584, 500 cycles) with:
 
 ```shell
 ant factory-feud-controlled-experiment
 ```
 
-This regenerates `results/factory-feud-controlled-seed-584.csv` and
-`results/factory-feud-controlled-seed-584.md`. The existing result files are
-the preserved submission measurements; wall-clock runtime columns may differ
-between machines while deterministic simulation fields remain identical.
+This writes `results/factory-feud-controlled-renamed-adaptive-seed-584.csv` and
+`results/factory-feud-controlled-renamed-adaptive-seed-584.md`. The original
+`results/factory-feud-controlled-seed-584.*` files remain preserved for comparison;
+wall-clock runtime columns may differ between machines while deterministic
+simulation fields remain identical.

@@ -30,6 +30,7 @@ public final class FactoryFeudExperimentRecord {
             + "cargo_safe_undelivered_cocoa_at_end,cargo_safe_carrier_correction_events"
             + ",player0_surviving_workers,player1_surviving_workers,"
             + "adaptive_surviving_workers,fixed_surviving_workers,"
+            + "adaptive_worker_deaths,fixed_worker_deaths,"
             + "example_attack_override,example_retreat_override";
 
     private final int matchId;
@@ -162,6 +163,8 @@ public final class FactoryFeudExperimentRecord {
                 .append(',').append(player1SurvivingWorkers)
                 .append(',').append(adaptiveSurvivingWorkers)
                 .append(',').append(fixedSurvivingWorkers)
+                .append(',').append(getAdaptiveWorkerDeaths())
+                .append(',').append(getFixedWorkerDeaths())
                 .append(',').append(csv(exampleAttackOverride))
                 .append(',').append(csv(exampleRetreatOverride));
         return row.toString();

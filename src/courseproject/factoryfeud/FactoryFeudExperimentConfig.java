@@ -8,6 +8,7 @@ import rts.units.UnitTypeTable;
 public final class FactoryFeudExperimentConfig {
     public enum AdaptiveStrategy {
         ADAPTIVE("adaptive"),
+        OLD_ADAPTIVE("old-adaptive"),
         CARGO_SAFE("cargo-safe"),
         THREAT_AWARE("threat-aware");
 
@@ -19,11 +20,9 @@ public final class FactoryFeudExperimentConfig {
 
         public String getCommandLineName() { return commandLineName; }
 
-        AdaptiveRoleAI create(UnitTypeTable utt, int matchDuration) {
+        OldAdaptiveRoleAI create(UnitTypeTable utt, int matchDuration) {
+            if (this == OLD_ADAPTIVE) return new OldAdaptiveRoleAI(utt, matchDuration);
             if (this == CARGO_SAFE) return new CargoSafeAdaptiveRoleAI(utt, matchDuration);
-            if (this == THREAT_AWARE) {
-                return new ThreatAwareAdaptiveRoleAI(utt, matchDuration);
-            }
             return new AdaptiveRoleAI(utt, matchDuration);
         }
 
@@ -32,7 +31,8 @@ public final class FactoryFeudExperimentConfig {
                 if (strategy.commandLineName.equals(value)) return strategy;
             }
             throw new IllegalArgumentException(
-                    "adaptive strategy must be 'adaptive', 'cargo-safe', or 'threat-aware'");
+                    "adaptive strategy must be 'adaptive', 'old-adaptive', "
+                            + "'cargo-safe', or 'threat-aware'");
         }
     }
 

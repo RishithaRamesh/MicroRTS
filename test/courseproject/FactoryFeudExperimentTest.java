@@ -62,8 +62,8 @@ public class FactoryFeudExperimentTest {
         List<String> lines = Files.readAllLines(csv, StandardCharsets.UTF_8);
         assertEquals(5, lines.size());
         assertEquals(FactoryFeudExperimentRecord.CSV_HEADER, lines.get(0));
-        assertEquals(56, FactoryFeudExperimentRecord.CSV_HEADER.split(",", -1).length);
-        assertEquals(56, lines.get(1).split(",", -1).length);
+        assertEquals(58, FactoryFeudExperimentRecord.CSV_HEADER.split(",", -1).length);
+        assertEquals(58, csvColumnCount(lines.get(1)));
         assertTrue(FactoryFeudExperimentRecord.CSV_HEADER.startsWith(
                 FactoryFeudExperimentRecord.LEGACY_CSV_HEADER + ","));
         assertTrue(lines.get(1).contains(FactoryFeudScenario.DEFAULT_MAP));
@@ -197,6 +197,24 @@ public class FactoryFeudExperimentTest {
         assertEquals(expectedSeed, second.getSeed());
         assertEquals(0, first.getAdaptiveSide());
         assertEquals(1, second.getAdaptiveSide());
+    }
+
+    private static int csvColumnCount(String row) {
+        int columns = 1;
+        boolean quoted = false;
+        for (int index = 0; index < row.length(); index++) {
+            char current = row.charAt(index);
+            if (current == '"') {
+                if (quoted && index + 1 < row.length() && row.charAt(index + 1) == '"') {
+                    index++;
+                } else {
+                    quoted = !quoted;
+                }
+            } else if (current == ',' && !quoted) {
+                columns++;
+            }
+        }
+        return columns;
     }
 
     private static void assertSameSideFresh(FactoryFeudExperimentRecord first,

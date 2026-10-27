@@ -10,7 +10,6 @@ import courseproject.factoryfeud.FactoryFeudScenario;
 import courseproject.factoryfeud.FactoryFeudExperimentConfig;
 import courseproject.factoryfeud.FactoryFeudVisualConfig;
 import courseproject.factoryfeud.Role;
-import courseproject.factoryfeud.ThreatAwareAdaptiveRoleAI;
 import org.junit.Before;
 import org.junit.Test;
 import rts.GameState;
@@ -19,7 +18,7 @@ import rts.UnitAction;
 import rts.units.Unit;
 import rts.units.UnitTypeTable;
 
-public class ThreatAwareAdaptiveRoleAITest {
+public class AdaptiveRoleAITest {
     private UnitTypeTable utt;
 
     @Before
@@ -31,7 +30,7 @@ public class ThreatAwareAdaptiveRoleAITest {
     @Test
     public void collectorRetreatsFromOneMoveThreat() throws Exception {
         GameState gs = FactoryFeudScenario.load(utt);
-        ThreatAwareAdaptiveRoleAI adaptive = new ThreatAwareAdaptiveRoleAI(utt, 100);
+        AdaptiveRoleAI adaptive = new AdaptiveRoleAI(utt, 100);
         adaptive.getAction(0, gs);
         Unit collector = workerWithRole(gs, adaptive, Role.COLLECTOR);
         Unit enemy = gs.getUnit(24);
@@ -62,7 +61,7 @@ public class ThreatAwareAdaptiveRoleAITest {
     @Test
     public void escortCounterattacksImmediateLethalThreat() throws Exception {
         GameState gs = FactoryFeudScenario.load(utt);
-        ThreatAwareAdaptiveRoleAI adaptive = new ThreatAwareAdaptiveRoleAI(utt, 100);
+        AdaptiveRoleAI adaptive = new AdaptiveRoleAI(utt, 100);
         adaptive.getAction(0, gs);
         Unit escort = workerWithRole(gs, adaptive, Role.ESCORT);
         Unit enemy = gs.getUnit(24);
@@ -85,7 +84,7 @@ public class ThreatAwareAdaptiveRoleAITest {
     @Test
     public void enemyMoreThanOneMoveAwayDoesNotTriggerOverride() throws Exception {
         GameState gs = FactoryFeudScenario.load(utt);
-        ThreatAwareAdaptiveRoleAI adaptive = new ThreatAwareAdaptiveRoleAI(utt, 100);
+        AdaptiveRoleAI adaptive = new AdaptiveRoleAI(utt, 100);
         adaptive.getAction(0, gs);
         Unit collector = workerWithRole(gs, adaptive, Role.COLLECTOR);
         Unit enemy = gs.getUnit(24);
@@ -103,7 +102,7 @@ public class ThreatAwareAdaptiveRoleAITest {
     @Test
     public void cloneAndResetClearTacticalState() throws Exception {
         GameState gs = FactoryFeudScenario.load(utt);
-        ThreatAwareAdaptiveRoleAI adaptive = new ThreatAwareAdaptiveRoleAI(utt, 100);
+        AdaptiveRoleAI adaptive = new AdaptiveRoleAI(utt, 100);
         adaptive.getAction(0, gs);
         Unit escort = workerWithRole(gs, adaptive, Role.ESCORT);
         Unit enemy = gs.getUnit(24);
@@ -112,7 +111,7 @@ public class ThreatAwareAdaptiveRoleAITest {
         adaptive.getAction(0, gs);
         assertTrue(adaptive.getTacticalOverrideCount() > 0);
 
-        ThreatAwareAdaptiveRoleAI clone = (ThreatAwareAdaptiveRoleAI) adaptive.clone();
+        AdaptiveRoleAI clone = (AdaptiveRoleAI) adaptive.clone();
         assertEquals(0, clone.getTacticalOverrideCount());
         adaptive.reset();
         assertEquals(0, adaptive.getTacticalOverrideCount());

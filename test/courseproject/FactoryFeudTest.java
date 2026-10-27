@@ -6,7 +6,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import ai.PassiveAI;
-import courseproject.factoryfeud.AdaptiveRoleAI;
+import courseproject.factoryfeud.OldAdaptiveRoleAI;
 import courseproject.factoryfeud.FactoryFeudMatch;
 import courseproject.factoryfeud.FactoryFeudResult;
 import courseproject.factoryfeud.FactoryFeudScenario;
@@ -208,7 +208,7 @@ public class FactoryFeudTest {
             if (unit.getType().canHarvest) unit.setHitPoints(100);
         }
         FactoryFeudMatch match = new FactoryFeudMatch(
-                gs, 500, new AdaptiveRoleAI(utt, 500), new FixedRoleAI(utt));
+                gs, 500, new OldAdaptiveRoleAI(utt, 500), new FixedRoleAI(utt));
         FactoryFeudResult result = match.run();
         int remaining = 0;
         int carried = 0;

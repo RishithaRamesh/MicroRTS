@@ -10,6 +10,8 @@ import java.awt.Font;
 import java.awt.GraphicsEnvironment;
 import javax.swing.BorderFactory;
 import javax.swing.JLabel;
+import javax.swing.JScrollPane;
+import javax.swing.JSplitPane;
 import javax.swing.JTextArea;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
@@ -43,7 +45,7 @@ public final class FactoryFeudVisual {
 
         int timeLimit = config.getTimeLimit();
         int cycleDelayMs = config.getCycleDelayMs();
-        final AdaptiveRoleAI adaptive;
+        final OldAdaptiveRoleAI adaptive;
         final FixedRoleAI fixed;
         final AI player0;
         final AI player1;
@@ -92,8 +94,8 @@ public final class FactoryFeudVisual {
             for (String event : adaptive.getRoleChangeHistory()) {
                 System.out.println("roleChange=" + event);
             }
-            if (adaptive instanceof ThreatAwareAdaptiveRoleAI) {
-                ThreatAwareAdaptiveRoleAI threatAware = (ThreatAwareAdaptiveRoleAI) adaptive;
+            if (adaptive instanceof AdaptiveRoleAI) {
+                AdaptiveRoleAI threatAware = (AdaptiveRoleAI) adaptive;
                 System.out.println("tacticalOverrides="
                         + threatAware.getTacticalOverrideCount());
                 for (String event : threatAware.getTacticalOverrideHistory()) {
@@ -115,9 +117,17 @@ public final class FactoryFeudVisual {
             frame.setTitle("Factory Feud - " + matchupLabel);
             JLabel hud = createHud(model.hudText(match));
             JTextArea rolePanel = createRolePanel(model.rolePanelText(match.getGameState()));
+            JScrollPane roleScroller = createRoleScroller(rolePanel);
+            frame.getContentPane().remove(frame.getPanel());
+            JSplitPane mainSplit = createMainSplit(frame, roleScroller);
             frame.getContentPane().add(hud, java.awt.BorderLayout.SOUTH);
-            frame.getContentPane().add(rolePanel, java.awt.BorderLayout.EAST);
+            frame.getContentPane().add(mainSplit, java.awt.BorderLayout.CENTER);
+            frame.getPanel().setMinimumSize(new Dimension(360, 360));
+            frame.setMinimumSize(new Dimension(720, 540));
+            frame.setResizable(true);
             frame.validate();
+            mainSplit.setDividerLocation(0.70);
+            frame.repaint();
             windowHolder[0] = new WindowParts(frame, hud, rolePanel);
         });
         return windowHolder[0];
@@ -140,9 +150,32 @@ public final class FactoryFeudVisual {
         roles.setBackground(new Color(34, 39, 46));
         roles.setForeground(Color.WHITE);
         roles.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 13));
+        roles.setLineWrap(true);
+        roles.setWrapStyleWord(true);
         roles.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
-        roles.setPreferredSize(new Dimension(280, 680));
         return roles;
+    }
+
+    private static JScrollPane createRoleScroller(JTextArea rolePanel) {
+        JScrollPane scroller = new JScrollPane(rolePanel,
+                JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
+                JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        scroller.setPreferredSize(new Dimension(280, 680));
+        scroller.setMinimumSize(new Dimension(230, 0));
+        scroller.setBorder(BorderFactory.createEmptyBorder());
+        scroller.getViewport().setBackground(rolePanel.getBackground());
+        return scroller;
+    }
+
+    private static JSplitPane createMainSplit(
+            PhysicalGameStateJFrame frame, JScrollPane roleScroller) {
+        JSplitPane split = new JSplitPane(
+                JSplitPane.HORIZONTAL_SPLIT, frame.getPanel(), roleScroller);
+        split.setBorder(BorderFactory.createEmptyBorder());
+        split.setContinuousLayout(true);
+        split.setOneTouchExpandable(true);
+        split.setResizeWeight(0.70);
+        return split;
     }
 
     private static void refreshWindow(

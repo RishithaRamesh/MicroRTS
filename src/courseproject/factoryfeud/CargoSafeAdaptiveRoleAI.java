@@ -4,10 +4,10 @@ import ai.core.AI;
 import rts.units.UnitTypeTable;
 
 /**
- * Experimental AdaptiveRoleAI variant that keeps cocoa carriers in the
+ * Experimental OldAdaptiveRoleAI variant that keeps cocoa carriers in the
  * Collector role until they return their cargo. The control agent is unchanged.
  */
-public final class CargoSafeAdaptiveRoleAI extends AdaptiveRoleAI {
+public final class CargoSafeAdaptiveRoleAI extends OldAdaptiveRoleAI {
     public CargoSafeAdaptiveRoleAI(UnitTypeTable utt) {
         super(utt);
     }

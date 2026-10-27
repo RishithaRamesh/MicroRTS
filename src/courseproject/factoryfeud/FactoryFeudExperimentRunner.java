@@ -49,7 +49,7 @@ public final class FactoryFeudExperimentRunner {
                 UnitTypeTable.VERSION_ORIGINAL_FINETUNED,
                 UnitTypeTable.MOVE_CONFLICT_RESOLUTION_CANCEL_BOTH);
         GameState gameState = FactoryFeudScenario.load(config.getMapPath(), utt);
-        AdaptiveRoleAI adaptive = config.getAdaptiveStrategy().create(utt, config.getCycles());
+        OldAdaptiveRoleAI adaptive = config.getAdaptiveStrategy().create(utt, config.getCycles());
         FixedRoleAI fixed = new FixedRoleAI(utt);
         AI player0 = adaptiveSide == 0 ? adaptive : fixed;
         AI player1 = adaptiveSide == 1 ? adaptive : fixed;
@@ -82,8 +82,8 @@ public final class FactoryFeudExperimentRunner {
                 telemetry.getCarrierMetrics(1 - adaptiveSide, gameState));
         boolean cargoSafe = config.getAdaptiveStrategy()
                 == FactoryFeudExperimentConfig.AdaptiveStrategy.CARGO_SAFE;
-        ThreatAwareAdaptiveRoleAI threatAware = adaptive instanceof ThreatAwareAdaptiveRoleAI
-                ? (ThreatAwareAdaptiveRoleAI) adaptive : null;
+        AdaptiveRoleAI threatAware = adaptive instanceof AdaptiveRoleAI
+                ? (AdaptiveRoleAI) adaptive : null;
         int tacticalOverrides = threatAware == null ? 0
                 : threatAware.getTacticalOverrideCount();
         int tacticalAttackOverrides = threatAware == null ? 0
@@ -145,7 +145,7 @@ public final class FactoryFeudExperimentRunner {
         return survivors;
     }
 
-    private static String firstOverride(ThreatAwareAdaptiveRoleAI threatAware,
+    private static String firstOverride(AdaptiveRoleAI threatAware,
             String marker) {
         if (threatAware == null) return null;
         for (String event : threatAware.getTacticalOverrideHistory()) {

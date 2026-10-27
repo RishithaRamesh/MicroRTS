@@ -16,8 +16,8 @@ import courseproject.factoryfeud.FactoryFeudResult;
 import courseproject.factoryfeud.FactoryFeudScenario;
 import courseproject.factoryfeud.FactoryFeudVisualModel;
 import courseproject.factoryfeud.FixedRoleAI;
+import courseproject.factoryfeud.OldAdaptiveRoleAI;
 import courseproject.factoryfeud.Role;
-import courseproject.factoryfeud.ThreatAwareAdaptiveRoleAI;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.junit.Before;
@@ -317,7 +317,9 @@ public class FactoryFeudAITest {
         String threatened = model.rolePanelText(gs);
 
         assertTrue(threatened.contains("Adaptive changes: 1"));
-        assertTrue(threatened.contains("emergency-factory-threat"));
+        assertTrue(threatened.contains("Cycle 0 | Unit #"));
+        assertTrue(threatened.contains(" -> DEFENDER"));
+        assertTrue(threatened.contains("Reason: emergency-factory-threat"));
         long changedUnit = changedUnitId(adaptive);
         assertTrue(threatened.contains("#" + changedUnit + "  D  Defender"));
 
@@ -326,35 +328,35 @@ public class FactoryFeudAITest {
     }
 
     @Test
-    public void visualModelShowsDefaultFixedP0AndThreatAwareP1Assignments()
+    public void visualModelShowsDefaultFixedP0AndAdaptiveP1Assignments()
             throws Exception {
         GameState gs = FactoryFeudScenario.load(utt);
         FixedRoleAI fixed = new FixedRoleAI(utt);
-        ThreatAwareAdaptiveRoleAI threatAware = new ThreatAwareAdaptiveRoleAI(utt, 500);
+        AdaptiveRoleAI adaptive = new AdaptiveRoleAI(utt, 500);
         fixed.getAction(0, gs);
-        threatAware.getAction(1, gs);
+        adaptive.getAction(1, gs);
         FactoryFeudVisualModel model = new FactoryFeudVisualModel(
-                threatAware, fixed, 1,
+                adaptive, fixed, 1,
                 "P0 (Blue/Left) FixedRoleAI vs P1 (Pink/Right) "
-                        + "ThreatAwareAdaptiveRoleAI");
+                        + "AdaptiveRoleAI");
 
         String roles = model.rolePanelText(gs);
         assertTrue(roles.contains("P0 FixedRoleAI"));
-        assertTrue(roles.contains("P1 ThreatAwareAdaptiveRoleAI"));
-        assertTrue(model.hudText(new FactoryFeudMatch(gs, 500, fixed, threatAware))
+        assertTrue(roles.contains("P1 AdaptiveRoleAI"));
+        assertTrue(model.hudText(new FactoryFeudMatch(gs, 500, fixed, adaptive))
                 .contains("P0 (Blue/Left) FixedRoleAI vs P1 (Pink/Right) "
-                        + "ThreatAwareAdaptiveRoleAI"));
+                        + "AdaptiveRoleAI"));
     }
 
     @Test
-    public void headlessRoleMatchDefaultsToFixedP0AndThreatAwareP1() {
+    public void headlessRoleMatchDefaultsToFixedP0AndAdaptiveP1() {
         assertEquals(0, FactoryFeudPhase2Match.FIXED_PLAYER);
         assertEquals(1, FactoryFeudPhase2Match.ADAPTIVE_PLAYER);
-        assertEquals(FactoryFeudExperimentConfig.AdaptiveStrategy.THREAT_AWARE,
+        assertEquals(FactoryFeudExperimentConfig.AdaptiveStrategy.ADAPTIVE,
                 FactoryFeudPhase2Match.DEFAULT_STRATEGY);
     }
 
-    private static Unit unitWithRole(GameState gs, AdaptiveRoleAI adaptive,
+    private static Unit unitWithRole(GameState gs, OldAdaptiveRoleAI adaptive,
             int player, Role role) {
         for (Unit unit : gs.getUnits()) {
             if (unit.getPlayer() == player && adaptive.getRole(unit.getID()) == role) return unit;
@@ -362,7 +364,7 @@ public class FactoryFeudAITest {
         return null;
     }
 
-    private static int roleCount(AdaptiveRoleAI adaptive, Role role) {
+    private static int roleCount(OldAdaptiveRoleAI adaptive, Role role) {
         int count = 0;
         for (Role assignment : adaptive.getRoleAssignments().values()) {
             if (assignment == role) count++;
@@ -370,7 +372,7 @@ public class FactoryFeudAITest {
         return count;
     }
 
-    private static long changedUnitId(AdaptiveRoleAI adaptive) {
+    private static long changedUnitId(OldAdaptiveRoleAI adaptive) {
         String event = adaptive.getRoleChangeHistory().get(0);
         int start = event.indexOf("unit=") + 5;
         return Long.parseLong(event.substring(start, event.indexOf(',', start)));
