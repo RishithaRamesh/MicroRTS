@@ -12,6 +12,7 @@ import courseproject.factoryfeud.FactoryFeudScenario;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
 import org.junit.Rule;
@@ -73,8 +74,9 @@ public class FactoryFeudExperimentTest {
     public void cargoSafeSelectionIsExplicitAndSideSwappedMetricsStayAttributed()
             throws Exception {
         Path csv = temporaryFolder.newFile("cargo-safe.csv").toPath();
+        String map = existingMap(FactoryFeudScenario.NARROW_PASSAGE_MAP);
         FactoryFeudExperimentConfig config = new FactoryFeudExperimentConfig(
-                2, 120, FactoryFeudScenario.REFINED_NARROW_PASSAGE_MAP, 7L, csv,
+                2, 120, map, 7L, csv,
                 FactoryFeudExperimentConfig.AdaptiveStrategy.CARGO_SAFE);
         List<FactoryFeudExperimentRecord> records =
                 FactoryFeudExperimentRunner.run(config).getRecords();
@@ -215,6 +217,12 @@ public class FactoryFeudExperimentTest {
             }
         }
         return columns;
+    }
+
+    private static String existingMap(String map) {
+        assertTrue("Factory Feud test map does not exist: " + map,
+                Files.isRegularFile(Paths.get(map)));
+        return map;
     }
 
     private static void assertSameSideFresh(FactoryFeudExperimentRecord first,

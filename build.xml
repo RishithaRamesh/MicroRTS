@@ -15,6 +15,9 @@
     <property name="factoryfeud.experiment.seed" value="584"/>
     <property name="factoryfeud.experiment.csv" value="results/factory-feud-experiments.csv"/>
     <property name="factoryfeud.experiment.strategy" value="adaptive"/>
+    <property name="factoryfeud.evaluate.cycles" value="500"/>
+    <property name="factoryfeud.evaluate.seed" value="584"/>
+    <property name="factoryfeud.evaluate.output.dir" value="results"/>
     <path id="microrts.classpath">
         <pathelement location="bin"/>
         <pathelement location="lib/bots/Coac.jar"/>
@@ -59,6 +62,7 @@
 			<test name="microrts.TestTracesIntegrity" todir="${junit.output.dir}"/>
 			<test name="microrts.TestPathfinding" todir="${junit.output.dir}"/>
 			<test name="courseproject.FactoryFeudTest" todir="${junit.output.dir}"/>
+			<test name="courseproject.factoryfeud.FactoryFeudControlledExperimentRunnerTest" todir="${junit.output.dir}"/>
 			<test name="courseproject.FactoryFeudAITest" todir="${junit.output.dir}"/>
 			<test name="courseproject.AdaptiveRoleAITest" todir="${junit.output.dir}"/>
 			<test name="courseproject.FactoryFeudExperimentTest" todir="${junit.output.dir}"/>
@@ -117,11 +121,18 @@
 			<arg value="${factoryfeud.experiment.strategy}"/>
 		</java>
 	</target>
-	<target name="factory-feud-controlled-experiment" depends="build" description="Run the fixed five-map AdaptiveRoleAI versus FixedRoleAI comparison">
+	<target name="factory-feud-evaluate" depends="build" description="Discover and evaluate all Factory Feud maps with paired sides">
 		<java classname="courseproject.factoryfeud.FactoryFeudControlledExperimentRunner" fork="true" failonerror="true">
 			<classpath refid="microrts.classpath"/>
+			<arg value="--cycles"/>
+			<arg value="${factoryfeud.evaluate.cycles}"/>
+			<arg value="--seed"/>
+			<arg value="${factoryfeud.evaluate.seed}"/>
+			<arg value="--output-dir"/>
+			<arg value="${factoryfeud.evaluate.output.dir}"/>
 		</java>
 	</target>
+	<target name="factory-feud-controlled-experiment" depends="factory-feud-evaluate" description="Legacy alias for factory-feud-evaluate"/>
 	<target name="export_jar" depends="cleanall,build-project">
 		<mkdir dir="build" />
 		<jar destfile="build/microrts.jar" basedir="bin" duplicate="preserve">

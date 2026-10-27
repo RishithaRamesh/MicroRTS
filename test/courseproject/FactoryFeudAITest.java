@@ -176,10 +176,10 @@ public class FactoryFeudAITest {
     }
 
     @Test
-    public void cargoSafeAdaptiveCompletesRefinedMapFromBothSidesWithoutDivertingCargo() throws Exception {
+    public void cargoSafeAdaptiveCompletesNarrowPassageMapFromBothSidesWithoutDivertingCargo() throws Exception {
         for (int adaptivePlayer = 0; adaptivePlayer < 2; adaptivePlayer++) {
             GameState gs = FactoryFeudScenario.load(
-                    FactoryFeudScenario.REFINED_NARROW_PASSAGE_MAP, utt);
+                FactoryFeudScenario.NARROW_PASSAGE_MAP, utt);
             final CargoSafeAdaptiveRoleAI adaptive = new CargoSafeAdaptiveRoleAI(utt, 500);
             FixedRoleAI fixed = new FixedRoleAI(utt);
             FactoryFeudMatch match = adaptivePlayer == 0

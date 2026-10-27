@@ -2,9 +2,12 @@ package courseproject.factoryfeud;
 
 import java.io.BufferedWriter;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -19,119 +22,185 @@ import rts.PhysicalGameState;
 import rts.units.Unit;
 import rts.units.UnitTypeTable;
 
-/** Runs the fixed 10-match, five-map AdaptiveRoleAI reproducibility suite. */
+/** Discovers, validates, and evaluates every Factory Feud map with paired sides. */
 public final class FactoryFeudControlledExperimentRunner {
-    public static final int CYCLES = 500;
-    public static final long SEED = 584L;
-    public static final Path DEFAULT_CSV = Paths.get(
-            "results/factory-feud-controlled-renamed-adaptive-seed-584.csv");
-    public static final Path DEFAULT_REPORT = Paths.get(
-            "results/factory-feud-controlled-renamed-adaptive-seed-584.md");
+    public static final int DEFAULT_CYCLES = 500;
+    public static final long DEFAULT_SEED = 584L;
+    public static final Path MAP_DIRECTORY = Paths.get("maps/factory-feud");
+    public static final Path DEFAULT_OUTPUT_DIRECTORY = Paths.get("results");
 
-    private static final List<String> MAPS = Collections.unmodifiableList(Arrays.asList(
-            FactoryFeudScenario.CONTROL_MAP,
-            FactoryFeudScenario.CONTESTED_CENTER_MAP,
-            FactoryFeudScenario.EXPOSED_ROUTES_MAP,
-            FactoryFeudScenario.NARROW_PASSAGE_MAP,
-            FactoryFeudScenario.REFINED_NARROW_PASSAGE_MAP));
-    private static final List<FactoryFeudExperimentConfig.AdaptiveStrategy> STRATEGIES =
-            Collections.unmodifiableList(Arrays.asList(
-                    FactoryFeudExperimentConfig.AdaptiveStrategy.ADAPTIVE));
+    private static final DateTimeFormatter TIMESTAMP =
+            DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss-SSS", Locale.ROOT);
     private static final int[][] DIRECTIONS = {{0, -1}, {-1, 0}, {1, 0}, {0, 1}};
 
     private FactoryFeudControlledExperimentRunner() {
     }
 
     public static void main(String[] args) throws Exception {
-        if (args.length > 2) {
-            throw new IllegalArgumentException("Usage: [csv-output] [markdown-output]");
-        }
-        Path csv = args.length >= 1 ? Paths.get(args[0]) : DEFAULT_CSV;
-        Path report = args.length >= 2 ? Paths.get(args[1]) : DEFAULT_REPORT;
-        List<MapAudit> audits = auditMaps();
-        List<FactoryFeudExperimentRecord> records = runMatches(csv);
-        writeReport(report, audits, records);
-        System.out.println("csv=" + csv.toAbsolutePath());
-        System.out.println("report=" + report.toAbsolutePath());
-        System.out.println("matches=" + records.size() + " cycles=" + CYCLES
-                + " seed=" + SEED + " conflictPolicy=cancel-both");
+        EvaluationArtifacts artifacts = run(EvaluationConfig.parse(args));
+        System.out.println("csv=" + artifacts.csv.toAbsolutePath());
+        System.out.println("report=" + artifacts.report.toAbsolutePath());
+        System.out.println("maps=" + artifacts.maps.size()
+                + " matches=" + artifacts.records.size()
+                + " cycles=" + artifacts.cycles + " seed=" + artifacts.seed
+                + " unitTypes=ORIGINAL_FINETUNED conflictPolicy=cancel-both");
     }
 
-    static List<FactoryFeudExperimentRecord> runMatches(Path csv) throws Exception {
-        List<FactoryFeudExperimentRecord> records = new ArrayList<>();
-        int matchId = 1;
-        for (String map : MAPS) {
-            for (FactoryFeudExperimentConfig.AdaptiveStrategy strategy : STRATEGIES) {
-                FactoryFeudExperimentConfig config = new FactoryFeudExperimentConfig(
-                        2, CYCLES, map, SEED, csv, strategy);
-                for (int strategySide = 0; strategySide < 2; strategySide++) {
-                    records.add(FactoryFeudExperimentRunner.runMatch(
-                            matchId++, strategySide, SEED, config));
+    static EvaluationArtifacts run(EvaluationConfig config) throws Exception {
+        List<String> maps = discoverMaps(MAP_DIRECTORY);
+        List<MapAudit> audits = auditMaps(maps);
+        Files.createDirectories(config.outputDirectory);
+        Path[] outputs = uniqueOutputPaths(config.outputDirectory, config.seed, config.cycles,
+                LocalDateTime.now().format(TIMESTAMP));
+        List<FactoryFeudExperimentRecord> records = runMatches(
+                outputs[0], maps, config.cycles, config.seed);
+        writeReport(outputs[1], audits, records, config.cycles, config.seed);
+        return new EvaluationArtifacts(outputs[0], outputs[1], maps, records,
+                config.cycles, config.seed);
+    }
+
+    /** Returns direct .xml children only, sorted by filename for stable execution. */
+    public static List<String> discoverMaps(Path directory) throws Exception {
+        if (directory == null || !Files.isDirectory(directory)) {
+            throw new IllegalArgumentException(
+                    "Factory Feud map directory does not exist: " + directory);
+        }
+        List<Path> discovered = new ArrayList<>();
+        try (DirectoryStream<Path> entries = Files.newDirectoryStream(directory)) {
+            for (Path entry : entries) {
+                if (Files.isRegularFile(entry)
+                        && entry.getFileName().toString().endsWith(".xml")) {
+                    discovered.add(entry);
                 }
             }
         }
-        FactoryFeudExperimentRunner.writeCsv(csv, records);
-        return records;
+        Collections.sort(discovered, Comparator.comparing(
+                path -> path.getFileName().toString()));
+        if (discovered.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "No .xml maps found directly inside " + directory);
+        }
+        List<String> maps = new ArrayList<>();
+        for (Path path : discovered) maps.add(path.toString());
+        return Collections.unmodifiableList(maps);
     }
 
-    static List<MapAudit> auditMaps() throws Exception {
+    static List<FactoryFeudExperimentRecord> runMatches(Path csv, List<String> maps,
+            int cycles, long seed) throws Exception {
+        if (cycles <= 0) throw new IllegalArgumentException("cycles must be positive");
+        List<FactoryFeudExperimentRecord> records = new ArrayList<>();
+        int matchId = 1;
+        for (String map : maps) {
+            FactoryFeudExperimentConfig config = new FactoryFeudExperimentConfig(
+                    2, cycles, map, seed, csv,
+                    FactoryFeudExperimentConfig.AdaptiveStrategy.ADAPTIVE);
+            // Required ordering: Fixed P0 vs Adaptive P1, then the side swap.
+            records.add(FactoryFeudExperimentRunner.runMatch(
+                    matchId++, 1, seed, config));
+            records.add(FactoryFeudExperimentRunner.runMatch(
+                    matchId++, 0, seed, config));
+        }
+        FactoryFeudExperimentRunner.writeCsv(csv, records);
+        return Collections.unmodifiableList(records);
+    }
+
+    static List<MapAudit> auditMaps(List<String> maps) throws Exception {
         UnitTypeTable utt = new UnitTypeTable(
                 UnitTypeTable.VERSION_ORIGINAL_FINETUNED,
                 UnitTypeTable.MOVE_CONFLICT_RESOLUTION_CANCEL_BOTH);
         List<MapAudit> audits = new ArrayList<>();
-        for (String map : MAPS) {
-            GameState state = FactoryFeudScenario.load(map, utt);
-            PhysicalGameState pgs = state.getPhysicalGameState();
-            Unit resource = null;
-            int resourceCount = 0;
-            int cocoa = 0;
-            int workers = 0;
-            for (Unit unit : pgs.getUnits()) {
-                if (unit.getType().isResource) {
-                    resource = unit;
-                    resourceCount++;
-                    cocoa += unit.getResources();
-                } else if (unit.getPlayer() >= 0 && unit.getType().canHarvest) {
-                    workers++;
-                    if (unit.getHitPoints() != 1) {
-                        throw new IllegalArgumentException(map + " worker " + unit.getID()
-                                + " does not start at 1 HP");
-                    }
-                }
+        for (String map : maps) {
+            try {
+                audits.add(auditMap(map, FactoryFeudScenario.load(map, utt)));
+            } catch (Exception failure) {
+                throw new IllegalArgumentException("Invalid Factory Feud map " + map
+                        + ": " + failure.getMessage(), failure);
             }
-            if (resourceCount != 1 || cocoa != 120 || workers != 8) {
-                throw new IllegalArgumentException(map
-                        + " must contain eight Workers and one 120-cocoa node");
-            }
-            int[][] workerDistances = new int[2][];
-            int[] returnDistances = new int[2];
-            for (int player = 0; player < 2; player++) {
-                List<Unit> playerWorkers = units(pgs, player, true);
-                workerDistances[player] = new int[playerWorkers.size()];
-                List<Integer> resourceApproaches = adjacentTerrain(pgs, resource);
-                for (int index = 0; index < playerWorkers.size(); index++) {
-                    Unit worker = playerWorkers.get(index);
-                    workerDistances[player][index] = shortestDistance(
-                            pgs, worker.getX() + worker.getY() * pgs.getWidth(),
-                            resourceApproaches);
-                    if (workerDistances[player][index] < 0) {
-                        throw new IllegalArgumentException(map + " player " + player
-                                + " worker " + worker.getID() + " cannot reach cocoa");
-                    }
-                }
-                Unit factory = units(pgs, player, false).get(0);
-                returnDistances[player] = shortestBetween(
-                        pgs, resourceApproaches, adjacentTerrain(pgs, factory));
-                if (returnDistances[player] < 0) {
-                    throw new IllegalArgumentException(map + " player " + player
-                            + " cannot return cocoa to its factory");
-                }
-            }
-            audits.add(new MapAudit(map, pgs.getWidth(), pgs.getHeight(),
-                    resource.getX(), resource.getY(), workerDistances,
-                    returnDistances, FactoryFeudScenario.hasBalancedSymmetry(pgs)));
         }
-        return audits;
+        return Collections.unmodifiableList(audits);
+    }
+
+    private static MapAudit auditMap(String map, GameState state) {
+        PhysicalGameState pgs = state.getPhysicalGameState();
+        Unit resource = null;
+        int resourceCount = 0;
+        int cocoa = 0;
+        int totalWorkers = 0;
+        int totalFactories = 0;
+        int[] workers = new int[FactoryFeudScenario.PLAYER_COUNT];
+        int[] factories = new int[FactoryFeudScenario.PLAYER_COUNT];
+        for (Unit unit : pgs.getUnits()) {
+            if (unit.getType().isResource) {
+                resource = unit;
+                resourceCount++;
+                cocoa += unit.getResources();
+            } else {
+                if ("Worker".equals(unit.getType().name)) {
+                    totalWorkers++;
+                    if (unit.getPlayer() < 0
+                            || unit.getPlayer() >= FactoryFeudScenario.PLAYER_COUNT) {
+                        throw new IllegalArgumentException(
+                                "every Worker must belong to player 0 or player 1");
+                    }
+                    workers[unit.getPlayer()]++;
+                    if (unit.getHitPoints() != 1) {
+                        throw new IllegalArgumentException("Worker " + unit.getID()
+                                + " must start at exactly 1 HP");
+                    }
+                }
+                if (unit.getType().isStockpile) {
+                    totalFactories++;
+                    if (unit.getPlayer() < 0
+                            || unit.getPlayer() >= FactoryFeudScenario.PLAYER_COUNT) {
+                        throw new IllegalArgumentException(
+                                "every factory must belong to player 0 or player 1");
+                    }
+                    factories[unit.getPlayer()]++;
+                }
+            }
+        }
+        if (resourceCount != 1 || cocoa != 120) {
+            throw new IllegalArgumentException(
+                    "expected one shared resource containing exactly 120 cocoa");
+        }
+        if (totalFactories != 2 || totalWorkers != 8) {
+            throw new IllegalArgumentException(
+                    "expected exactly two factories and eight Workers total");
+        }
+        for (int player = 0; player < FactoryFeudScenario.PLAYER_COUNT; player++) {
+            if (workers[player] != 4 || factories[player] != 1) {
+                throw new IllegalArgumentException("player " + player
+                        + " must have exactly four Workers and one factory");
+            }
+        }
+
+        int[][] workerDistances = new int[2][];
+        int[] returnDistances = new int[2];
+        List<Integer> resourceApproaches = adjacentTerrain(pgs, resource);
+        for (int player = 0; player < 2; player++) {
+            List<Unit> playerWorkers = units(pgs, player, true);
+            workerDistances[player] = new int[playerWorkers.size()];
+            for (int index = 0; index < playerWorkers.size(); index++) {
+                Unit worker = playerWorkers.get(index);
+                workerDistances[player][index] = shortestDistance(
+                        pgs, worker.getX() + worker.getY() * pgs.getWidth(),
+                        resourceApproaches);
+                if (workerDistances[player][index] < 0) {
+                    throw new IllegalArgumentException("player " + player + " worker "
+                            + worker.getID() + " cannot reach cocoa");
+                }
+            }
+            Unit factory = units(pgs, player, false).get(0);
+            returnDistances[player] = shortestBetween(
+                    pgs, resourceApproaches, adjacentTerrain(pgs, factory));
+            if (returnDistances[player] < 0) {
+                throw new IllegalArgumentException(
+                        "player " + player + " cannot return cocoa to its factory");
+            }
+        }
+        return new MapAudit(map, pgs.getWidth(), pgs.getHeight(),
+                resource.getX(), resource.getY(), workerDistances,
+                returnDistances, FactoryFeudScenario.hasBalancedSymmetry(pgs));
     }
 
     private static List<Unit> units(PhysicalGameState pgs, int player, boolean workers) {
@@ -188,9 +257,8 @@ public final class FactoryFeudControlledExperimentRunner {
                         || nextY >= pgs.getHeight()) continue;
                 int next = nextX + nextY * pgs.getWidth();
                 if (distance[next] >= 0
-                        || pgs.getTerrain(nextX, nextY) != PhysicalGameState.TERRAIN_NONE) {
-                    continue;
-                }
+                        || pgs.getTerrain(nextX, nextY)
+                                != PhysicalGameState.TERRAIN_NONE) continue;
                 distance[next] = distance[position] + 1;
                 queue.add(next);
             }
@@ -198,90 +266,79 @@ public final class FactoryFeudControlledExperimentRunner {
         return -1;
     }
 
+    private static Path[] uniqueOutputPaths(Path directory, long seed, int cycles,
+            String timestamp) {
+        String prefix = "factory-feud-evaluation-seed-" + seed
+                + "-cycles-" + cycles + "-" + timestamp;
+        int suffix = 0;
+        while (true) {
+            String base = suffix == 0 ? prefix : prefix + "-" + suffix;
+            Path csv = directory.resolve(base + ".csv");
+            Path report = directory.resolve(base + ".md");
+            if (!Files.exists(csv) && !Files.exists(report)) return new Path[]{csv, report};
+            suffix++;
+        }
+    }
+
     private static void writeReport(Path report, List<MapAudit> audits,
-            List<FactoryFeudExperimentRecord> records) throws Exception {
-        Path absolute = report.toAbsolutePath();
-        if (absolute.getParent() != null) Files.createDirectories(absolute.getParent());
-        try (BufferedWriter writer = Files.newBufferedWriter(absolute, StandardCharsets.UTF_8)) {
-            writer.write("# Factory Feud controlled experiment — seed 584\n\n");
-            writer.write("These are 10 deterministic, single-seed match outcomes, not "
-                    + "independent randomized trials. Every match used 500 cycles, microRTS "
-                    + "ORIGINAL_FINETUNED unit types, seed 584, and cancel-both movement "
-                    + "conflict resolution. AdaptiveRoleAI was side-swapped against "
-                    + "FixedRoleAI on every map.\n\n");
-            writer.write("## Map validation and route audit\n\n");
-            writer.write("Distances are terrain-only shortest movement steps. Worker arrays "
-                    + "are ordered by unit ID; return distance is the shortest cocoa-adjacent "
-                    + "cell to factory-adjacent cell. Temporary unit occupancy is ignored.\n\n");
+            List<FactoryFeudExperimentRecord> records, int cycles, long seed)
+            throws Exception {
+        try (BufferedWriter writer = Files.newBufferedWriter(
+                report, StandardCharsets.UTF_8)) {
+            writer.write("# Factory Feud evaluation\n\n## Configuration\n\n");
+            writer.write("- Seed: `" + seed + "`\n");
+            writer.write("- Match duration: `" + cycles + "` cycles\n");
+            writer.write("- Unit types: `ORIGINAL_FINETUNED`\n");
+            writer.write("- Movement conflict policy: `cancel-both`\n");
+            writer.write("- Pair order: FixedRoleAI P0 vs AdaptiveRoleAI P1, then side swap\n");
+            writer.write("\n## Maps tested\n\n");
+            for (MapAudit audit : audits) writer.write("- `" + mapName(audit.map) + "`\n");
+
+            writer.write("\n## Map validation and route audit\n\n");
             writer.write("| Map | Size | Cocoa | P0 worker→cocoa | P1 worker→cocoa | "
                     + "P0 return | P1 return | Geometric symmetry |\n");
             writer.write("|---|---:|---:|---|---|---:|---:|---|\n");
             for (MapAudit audit : audits) writer.write(audit.tableRow());
 
             writer.write("\n## Match results\n\n");
-            writer.write("| ID | Map | Strategy side | Cocoa P0–P1 | Result | Strategy "
-                    + "workers alive/dead | Fixed workers alive/dead | Role changes | "
-                    + "Overrides A/R | Cycles | Runtime ms |\n");
-            writer.write("|---:|---|---|---:|---|---:|---:|---:|---:|---:|---:|\n");
+            writer.write("| ID | Map | P0 AI | P1 AI | Fixed cocoa | Adaptive cocoa | "
+                    + "Adaptive result | Adaptive workers alive/dead | Fixed workers "
+                    + "alive/dead | Role changes | Counterattacks/retreats | "
+                    + "Completed/configured cycles | Runtime ms |\n");
+            writer.write("|---:|---|---|---|---:|---:|---|---:|---:|---:|---:|---:|---:|\n");
             for (FactoryFeudExperimentRecord record : records) {
+                String player0 = record.getAdaptiveSide() == 0
+                        ? "AdaptiveRoleAI" : "FixedRoleAI";
+                String player1 = record.getAdaptiveSide() == 1
+                        ? "AdaptiveRoleAI" : "FixedRoleAI";
                 writer.write(String.format(Locale.ROOT,
-                        "| %d | %s | %s P%d | %d–%d | %s | %d/%d | %d/%d | %d | %d/%d | %d | %d |%n",
-                        record.getMatchId(), mapName(record.getMap()),
-                        displayStrategy(record.getAdaptiveStrategy()), record.getAdaptiveSide(),
-                        record.getPlayer0Score(), record.getPlayer1Score(),
-                        resultLetter(record), record.getAdaptiveSurvivingWorkers(),
+                        "| %d | %s | %s | %s | %d | %d | %s | %d/%d | %d/%d | %d | %d/%d | %d/%d | %d |%n",
+                        record.getMatchId(), mapName(record.getMap()), player0, player1,
+                        record.getFixedScore(), record.getAdaptiveScore(),
+                        adaptiveResultLabel(record), record.getAdaptiveSurvivingWorkers(),
                         record.getAdaptiveWorkerDeaths(), record.getFixedSurvivingWorkers(),
                         record.getFixedWorkerDeaths(), record.getRoleReassignments(),
                         record.getTacticalAttackOverrides(),
-                        record.getTacticalRetreatOverrides(), record.getMatchCycles(),
-                        record.getRuntimeMillis()));
+                        record.getTacticalRetreatOverrides(), record.getCompletedCycles(),
+                        record.getConfiguredCycles(), record.getRuntimeMillis()));
             }
 
-            writer.write("\n## Summary by map and strategy\n\n");
-            writer.write("| Map | Strategy | Avg strategy cocoa | Avg Fixed cocoa | W/D/L | "
-                    + "Worker deaths | Role changes | Overrides A/R |\n");
-            writer.write("|---|---|---:|---:|---|---:|---:|---:|\n");
-            Map<String, Aggregate> aggregates = aggregate(records);
-            for (String map : MAPS) {
-                for (FactoryFeudExperimentConfig.AdaptiveStrategy strategy : STRATEGIES) {
-                    Aggregate aggregate = aggregates.get(key(map, strategy.getCommandLineName()));
-                    writer.write(aggregate.tableRow(mapName(map),
-                            displayStrategy(strategy.getCommandLineName())));
-                }
-            }
-
-            writer.write("\n## Overall comparison\n\n");
-            writer.write("| Strategy | Matches | Avg cocoa | Avg Fixed cocoa | W/D/L | "
-                    + "Worker deaths | Avg worker deaths | Overrides A/R |\n");
+            Map<String, Aggregate> byMap = aggregate(records);
+            writer.write("\n## Summary by map\n\n");
+            writer.write("| Map | Matches | Avg Adaptive cocoa | Avg Fixed cocoa | "
+                    + "Adaptive W/D/L | Adaptive worker deaths | Role changes | "
+                    + "Counterattacks/retreats |\n");
             writer.write("|---|---:|---:|---:|---|---:|---:|---:|\n");
-            for (FactoryFeudExperimentConfig.AdaptiveStrategy strategy : STRATEGIES) {
-                Aggregate aggregate = new Aggregate();
-                for (FactoryFeudExperimentRecord record : records) {
-                    if (strategy.getCommandLineName().equals(record.getAdaptiveStrategy())) {
-                        aggregate.add(record);
-                    }
-                }
-                writer.write(aggregate.overallRow(displayStrategy(
-                        strategy.getCommandLineName())));
+            Aggregate overall = new Aggregate();
+            for (MapAudit audit : audits) {
+                writer.write(byMap.get(audit.map).tableRow(mapName(audit.map)));
             }
-
-            writer.write("\n## Observed tactical examples\n\n");
-            boolean exampleFound = false;
-            for (FactoryFeudExperimentRecord record : records) {
-                if (record.getExampleAttackOverride() != null) {
-                    writer.write("- " + mapName(record.getMap()) + ", P"
-                            + record.getAdaptiveSide() + " attack: `"
-                            + record.getExampleAttackOverride() + "`\n");
-                    exampleFound = true;
-                }
-                if (record.getExampleRetreatOverride() != null) {
-                    writer.write("- " + mapName(record.getMap()) + ", P"
-                            + record.getAdaptiveSide() + " retreat: `"
-                            + record.getExampleRetreatOverride() + "`\n");
-                    exampleFound = true;
-                }
-            }
-            if (!exampleFound) writer.write("- No tactical override triggered.\n");
+            for (FactoryFeudExperimentRecord record : records) overall.add(record);
+            writer.write("\n## Overall\n\n");
+            writer.write("| Matches | Avg Adaptive cocoa | Avg Fixed cocoa | Adaptive W/D/L | "
+                    + "Adaptive worker deaths | Role changes | Counterattacks/retreats |\n");
+            writer.write("|---:|---:|---:|---|---:|---:|---:|\n");
+            writer.write(overall.overallRow());
         }
     }
 
@@ -289,31 +346,81 @@ public final class FactoryFeudControlledExperimentRunner {
             List<FactoryFeudExperimentRecord> records) {
         Map<String, Aggregate> aggregates = new LinkedHashMap<>();
         for (FactoryFeudExperimentRecord record : records) {
-            String key = key(record.getMap(), record.getAdaptiveStrategy());
-            Aggregate aggregate = aggregates.get(key);
+            Aggregate aggregate = aggregates.get(record.getMap());
             if (aggregate == null) {
                 aggregate = new Aggregate();
-                aggregates.put(key, aggregate);
+                aggregates.put(record.getMap(), aggregate);
             }
             aggregate.add(record);
         }
         return aggregates;
     }
 
-    private static String key(String map, String strategy) { return map + "\n" + strategy; }
-
-    private static String resultLetter(FactoryFeudExperimentRecord record) {
-        if (record.getOutcome() == FactoryFeudExperimentRecord.Outcome.ADAPTIVE_WIN) return "W";
-        if (record.getOutcome() == FactoryFeudExperimentRecord.Outcome.FIXED_WIN) return "L";
-        return "D";
-    }
-
-    private static String displayStrategy(String strategy) {
-        return "old-adaptive".equals(strategy) ? "OldAdaptiveRoleAI" : "AdaptiveRoleAI";
+    static String adaptiveResultLabel(FactoryFeudExperimentRecord record) {
+        if (record.getOutcome() == FactoryFeudExperimentRecord.Outcome.ADAPTIVE_WIN) {
+            return "WIN";
+        }
+        if (record.getOutcome() == FactoryFeudExperimentRecord.Outcome.FIXED_WIN) {
+            return "LOSS";
+        }
+        return "DRAW";
     }
 
     private static String mapName(String path) {
         return Paths.get(path).getFileName().toString();
+    }
+
+    static final class EvaluationConfig {
+        final int cycles;
+        final long seed;
+        final Path outputDirectory;
+
+        EvaluationConfig(int cycles, long seed, Path outputDirectory) {
+            if (cycles <= 0) throw new IllegalArgumentException("cycles must be positive");
+            if (outputDirectory == null) {
+                throw new IllegalArgumentException("output directory cannot be null");
+            }
+            this.cycles = cycles;
+            this.seed = seed;
+            this.outputDirectory = outputDirectory;
+        }
+
+        static EvaluationConfig parse(String[] args) {
+            int cycles = DEFAULT_CYCLES;
+            long seed = DEFAULT_SEED;
+            Path output = DEFAULT_OUTPUT_DIRECTORY;
+            for (int index = 0; index < args.length; index++) {
+                if (index + 1 >= args.length) {
+                    throw new IllegalArgumentException("Missing value for " + args[index]);
+                }
+                String option = args[index];
+                String value = args[++index];
+                if ("--cycles".equals(option)) cycles = Integer.parseInt(value);
+                else if ("--seed".equals(option)) seed = Long.parseLong(value);
+                else if ("--output-dir".equals(option)) output = Paths.get(value);
+                else throw new IllegalArgumentException("Unknown option: " + option);
+            }
+            return new EvaluationConfig(cycles, seed, output);
+        }
+    }
+
+    static final class EvaluationArtifacts {
+        final Path csv;
+        final Path report;
+        final List<String> maps;
+        final List<FactoryFeudExperimentRecord> records;
+        final int cycles;
+        final long seed;
+
+        EvaluationArtifacts(Path csv, Path report, List<String> maps,
+                List<FactoryFeudExperimentRecord> records, int cycles, long seed) {
+            this.csv = csv;
+            this.report = report;
+            this.maps = maps;
+            this.records = records;
+            this.cycles = cycles;
+            this.seed = seed;
+        }
     }
 
     static final class MapAudit {
@@ -339,7 +446,8 @@ public final class FactoryFeudControlledExperimentRunner {
         }
 
         String tableRow() {
-            return String.format(Locale.ROOT, "| %s | %d×%d | 120 @ %d,%d | %s | %s | %d | %d | %s |%n",
+            return String.format(Locale.ROOT,
+                    "| %s | %d×%d | 120 @ %d,%d | %s | %s | %d | %d | %s |%n",
                     mapName(map), width, height, resourceX, resourceY,
                     Arrays.toString(workerDistances[0]), Arrays.toString(workerDistances[1]),
                     returnDistances[0], returnDistances[1], symmetric ? "yes" : "no");
@@ -367,25 +475,26 @@ public final class FactoryFeudControlledExperimentRunner {
             attacks += record.getTacticalAttackOverrides();
             retreats += record.getTacticalRetreatOverrides();
             if (record.getOutcome() == FactoryFeudExperimentRecord.Outcome.ADAPTIVE_WIN) wins++;
-            else if (record.getOutcome() == FactoryFeudExperimentRecord.Outcome.FIXED_WIN) losses++;
-            else draws++;
+            else if (record.getOutcome() == FactoryFeudExperimentRecord.Outcome.FIXED_WIN) {
+                losses++;
+            } else draws++;
         }
 
-        double averageCocoa() { return cocoa / (double) matches; }
+        private double averageAdaptiveCocoa() { return cocoa / (double) matches; }
+        private double averageFixedCocoa() { return fixedCocoa / (double) matches; }
 
-        String tableRow(String map, String strategy) {
+        String tableRow(String map) {
             return String.format(Locale.ROOT,
-                    "| %s | %s | %.2f | %.2f | %d/%d/%d | %d | %d | %d/%d |%n",
-                    map, strategy, averageCocoa(), fixedCocoa / (double) matches,
+                    "| %s | %d | %.2f | %.2f | %d/%d/%d | %d | %d | %d/%d |%n",
+                    map, matches, averageAdaptiveCocoa(), averageFixedCocoa(),
                     wins, draws, losses, workerDeaths, roleChanges, attacks, retreats);
         }
 
-        String overallRow(String strategy) {
+        String overallRow() {
             return String.format(Locale.ROOT,
-                    "| %s | %d | %.2f | %.2f | %d/%d/%d | %d | %.2f | %d/%d |%n",
-                    strategy, matches, averageCocoa(), fixedCocoa / (double) matches,
-                    wins, draws, losses, workerDeaths, workerDeaths / (double) matches,
-                    attacks, retreats);
+                    "| %d | %.2f | %.2f | %d/%d/%d | %d | %d | %d/%d |%n",
+                    matches, averageAdaptiveCocoa(), averageFixedCocoa(),
+                    wins, draws, losses, workerDeaths, roleChanges, attacks, retreats);
         }
     }
 }

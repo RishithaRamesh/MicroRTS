@@ -11,6 +11,7 @@ import ai.abstraction.pathfinding.AStarPathFinding;
 import ai.core.AI;
 import ai.core.ParameterSpecification;
 import courseproject.factoryfeud.AdaptiveRoleAI;
+import courseproject.factoryfeud.FactoryFeudControlledExperimentRunner;
 import courseproject.factoryfeud.FactoryFeudMatch;
 import courseproject.factoryfeud.FactoryFeudExperimentConfig;
 import courseproject.factoryfeud.FactoryFeudResult;
@@ -22,6 +23,8 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import org.junit.Before;
 import org.junit.Test;
 import rts.GameState;
@@ -31,6 +34,8 @@ import rts.units.Unit;
 import rts.units.UnitTypeTable;
 
 public class FactoryFeudScenarioVariationTest {
+    private static final String OBSTACLE_ROUTES_MAP =
+            "maps/factory-feud/factory-feud-obstacle-routes-14x12.xml";
     private UnitTypeTable utt;
 
     @Before
@@ -42,8 +47,10 @@ public class FactoryFeudScenarioVariationTest {
 
     @Test
     public void everyEvaluationMapIsStandardizedValidAndReachable() throws Exception {
-        assertEquals(5, FactoryFeudScenario.evaluationMaps().size());
-        for (String map : FactoryFeudScenario.evaluationMaps()) {
+        List<String> maps = FactoryFeudControlledExperimentRunner.discoverMaps(
+                FactoryFeudControlledExperimentRunner.MAP_DIRECTORY);
+        assertEquals(5, maps.size());
+        for (String map : maps) {
             GameState gs = FactoryFeudScenario.load(map, utt);
             PhysicalGameState pgs = gs.getPhysicalGameState();
             int[] workers = new int[2];
@@ -74,10 +81,9 @@ public class FactoryFeudScenarioVariationTest {
     }
 
     @Test
-    public void refinedNarrowPassageUsesTerrainCorridorAndStandardizedNode()
+    public void narrowPassageUsesTerrainCorridorAndStandardizedNode()
             throws Exception {
-        GameState gs = FactoryFeudScenario.load(
-                FactoryFeudScenario.REFINED_NARROW_PASSAGE_MAP, utt, 1);
+        GameState gs = loadExistingMap(FactoryFeudScenario.NARROW_PASSAGE_MAP, 1);
         PhysicalGameState pgs = gs.getPhysicalGameState();
         int cocoaTotal = 0;
         Set<String> resourceLocations = new HashSet<>();
@@ -105,18 +111,17 @@ public class FactoryFeudScenarioVariationTest {
 
     @Test(expected = IllegalArgumentException.class)
     public void configurableCocoaCountRejectsMismatch() throws Exception {
-        FactoryFeudScenario.load(FactoryFeudScenario.REFINED_NARROW_PASSAGE_MAP, utt, 6);
+        loadExistingMap(FactoryFeudScenario.NARROW_PASSAGE_MAP, 6);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void configurableCocoaCountMustBePositive() throws Exception {
-        FactoryFeudScenario.load(FactoryFeudScenario.REFINED_NARROW_PASSAGE_MAP, utt, 0);
+        loadExistingMap(FactoryFeudScenario.NARROW_PASSAGE_MAP, 0);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void genericValidationRejectsMapWithoutCocoa() throws Exception {
-        GameState gs = FactoryFeudScenario.load(
-                FactoryFeudScenario.REFINED_NARROW_PASSAGE_MAP, utt);
+        GameState gs = loadExistingMap(FactoryFeudScenario.NARROW_PASSAGE_MAP);
         for (Unit unit : new ArrayList<>(gs.getUnits())) {
             if (unit.getType().isResource) gs.removeUnit(unit);
         }
@@ -124,10 +129,9 @@ public class FactoryFeudScenarioVariationTest {
     }
 
     @Test
-    public void refinedNarrowPassageSupportsDeliveryAndCombatForBothRoleAgents()
+    public void narrowPassageSupportsDeliveryAndCombatForBothRoleAgents()
             throws Exception {
-        GameState gs = FactoryFeudScenario.load(
-                FactoryFeudScenario.REFINED_NARROW_PASSAGE_MAP, utt);
+        GameState gs = loadExistingMap(FactoryFeudScenario.NARROW_PASSAGE_MAP);
         // Preserve this legacy two-sided delivery/combat fixture independently of the
         // evaluation maps' standardized one-hit Workers.
         for (Unit unit : gs.getUnits()) {
@@ -153,7 +157,8 @@ public class FactoryFeudScenarioVariationTest {
 
     @Test
     public void tacticalMapsUseMinimumEscortEffectiveDurability() throws Exception {
-        for (String map : FactoryFeudScenario.evaluationMaps()) {
+        for (String map : FactoryFeudControlledExperimentRunner.discoverMaps(
+                FactoryFeudControlledExperimentRunner.MAP_DIRECTORY)) {
             GameState gs = FactoryFeudScenario.load(map, utt);
             for (Unit unit : gs.getUnits()) {
                 if (unit.getPlayer() >= 0 && unit.getType().canHarvest) {
@@ -181,16 +186,33 @@ public class FactoryFeudScenarioVariationTest {
     public void visualConfigurationDefaultsToControlAndSupportsRectangularMap()
             throws Exception {
         FactoryFeudVisualConfig defaults = FactoryFeudVisualConfig.parse(new String[0]);
-        FactoryFeudVisualConfig exposed = FactoryFeudVisualConfig.parse(new String[]{
-            "500", "0", FactoryFeudScenario.EXPOSED_ROUTES_MAP
+        FactoryFeudVisualConfig rectangular = FactoryFeudVisualConfig.parse(new String[]{
+            "500", "0", existingMap(OBSTACLE_ROUTES_MAP)
         });
-        GameState exposedState = exposed.loadScenario(utt);
+        GameState rectangularState = rectangular.loadScenario(utt);
 
         assertEquals(FactoryFeudScenario.DEFAULT_MAP, defaults.getMapPath());
         assertEquals(FactoryFeudExperimentConfig.AdaptiveStrategy.ADAPTIVE,
                 defaults.getAdaptiveStrategy());
-        assertEquals(14, exposedState.getPhysicalGameState().getWidth());
-        assertEquals(12, exposedState.getPhysicalGameState().getHeight());
+        assertEquals(14, rectangularState.getPhysicalGameState().getWidth());
+        assertEquals(12, rectangularState.getPhysicalGameState().getHeight());
+    }
+
+    private String existingMap(String map) {
+        assertTrue("Factory Feud test map does not exist: " + map,
+                Files.isRegularFile(Paths.get(map)));
+        return map;
+    }
+
+    private GameState loadExistingMap(String map) throws Exception {
+        existingMap(map);
+        return FactoryFeudScenario.load(map, utt);
+    }
+
+    private GameState loadExistingMap(String map, int expectedCocoaCount)
+            throws Exception {
+        existingMap(map);
+        return FactoryFeudScenario.load(map, utt, expectedCocoaCount);
     }
 
     @Test(expected = IllegalArgumentException.class)
