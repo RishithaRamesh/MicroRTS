@@ -23,6 +23,7 @@ public final class FactoryFeudMatch {
     private final GameState gameState;
     private final int timeLimit;
     private final AI[] agents;
+    private final FactoryFeudMatchTelemetry telemetry;
     private final int[] deliveredCocoa = new int[2];
     private final int[] lastResourceBalance = new int[2];
     private int illegalActionCount;
@@ -40,6 +41,7 @@ public final class FactoryFeudMatch {
         this.gameState = gameState;
         this.timeLimit = timeLimit;
         agents = new AI[]{player0, player1};
+        telemetry = new FactoryFeudMatchTelemetry(timeLimit, agents);
         lastResourceBalance[0] = gameState.getPlayer(0).getResources();
         lastResourceBalance[1] = gameState.getPlayer(1).getResources();
     }
@@ -73,6 +75,7 @@ public final class FactoryFeudMatch {
     public void step(PlayerAction player0Action, PlayerAction player1Action) {
         if (isFinished()) throw new IllegalStateException("Factory Feud match has reached its time limit");
 
+        telemetry.beforeCycle(gameState);
         PlayerAction allowedPlayer0 = withoutProduction(player0Action, 0);
         PlayerAction allowedPlayer1 = withoutProduction(player1Action, 1);
         illegalActionCount += countIllegalActions(allowedPlayer0);
@@ -80,7 +83,8 @@ public final class FactoryFeudMatch {
         gameState.issueSafe(allowedPlayer0);
         gameState.issueSafe(allowedPlayer1);
         gameState.cycle();
-        updateDeliveryScores();
+        int[] deliveryDeltas = updateDeliveryScores();
+        telemetry.afterCycle(gameState, deliveryDeltas);
     }
 
     private PlayerAction withoutProduction(PlayerAction proposed, int player) {
@@ -108,16 +112,19 @@ public final class FactoryFeudMatch {
         return count;
     }
 
-    private void updateDeliveryScores() {
+    private int[] updateDeliveryScores() {
+        int[] deltas = new int[2];
         for (int player = 0; player < 2; player++) {
             int currentBalance = gameState.getPlayer(player).getResources();
             int delta = currentBalance - lastResourceBalance[player];
             if (delta < 0) {
                 throw new IllegalStateException("Player resources decreased; spending is prohibited in Factory Feud");
             }
+            deltas[player] = delta;
             deliveredCocoa[player] += delta;
             lastResourceBalance[player] = currentBalance;
         }
+        return deltas;
     }
 
     public boolean isFinished() {
@@ -147,6 +154,10 @@ public final class FactoryFeudMatch {
 
     public GameState getGameState() {
         return gameState;
+    }
+
+    public FactoryFeudMatchTelemetry getTelemetry() {
+        return telemetry;
     }
 
     public FactoryFeudResult getResult() {

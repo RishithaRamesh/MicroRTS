@@ -254,12 +254,42 @@ ant -Dfactoryfeud.experiment.matches=20 \
   factory-feud-experiments
 ```
 
-The CSV contains match ID, map, pair seed, adaptive side, player and strategy
-scores, explicit outcome (`ADAPTIVE_WIN`, `FIXED_WIN`, or `DRAW`), completed
-cycles, player and strategy survivor counts, adaptive role reassignments,
-illegal-action count, and runtime. The console summary reports win/draw/loss
-counts, adaptive win rate (draws remain in the denominator), mean cocoa by
-strategy, mean score differential, and mean runtime.
+The original 17 CSV columns remain first and unchanged. Appended telemetry
+separates `configured_cycles` and `completed_cycles` (simulation time) from
+`simulation_runtime_ms` (wall-clock time). Delivery timing is recorded per
+player from observed positive score deltas: first and last delivery cycle, mean
+interval between consecutive delivery-event cycles, and event count. First,
+last, and mean interval cells are blank when unavailable; a team with no
+deliveries has a genuine event count of zero.
+
+Carrier fields are attributed by strategy rather than player number, so paired
+side swaps remain comparable. A role interruption is a Collector-to-non-
+Collector transition while carrying cocoa. Interrupted cycles count each
+cycle each loaded Worker remains outside the Collector role. A correction is
+the reverse transition while it is still carrying. Carrier attacks count only
+observed HP decreases or removal during combat resolution, never attack orders
+or selected targets. Deaths and surviving undelivered cargo are separate.
+Blank strategy fields mean that strategy was not present or its role state was
+not observable; observable zeroes are written as `0`.
+
+The default remains `AdaptiveRoleAI` versus `FixedRoleAI`. To run the separate
+carrier-continuity experiment, set the strategy property to `cargo-safe`:
+
+```shell
+ant -Dfactoryfeud.experiment.matches=20 \
+  -Dfactoryfeud.cycles=500 \
+  -Dfactoryfeud.experiment.map=maps/factory-feud/factory-feud-narrow-passage-refined-12x12.xml \
+  -Dfactoryfeud.experiment.seed=584 \
+  -Dfactoryfeud.experiment.strategy=cargo-safe \
+  -Dfactoryfeud.experiment.csv=results/factory-feud-refined-cargo-safe.csv \
+  factory-feud-experiments
+```
+
+Use `-Dfactoryfeud.experiment.strategy=adaptive` (the default) for the original
+workflow. The console summary reports win/draw/loss counts, adaptive-family win
+rate (draws remain in the denominator), mean cocoa by strategy, mean score
+differential, and mean runtime. Paired rows share a seed and are controlled
+side swaps, not independent statistical samples.
 
 The current 12x12 map starts both players at zero delivered cocoa and contains
 six 20-unit cocoa nodes (120 cocoa total). Delivery scores are deltas from each

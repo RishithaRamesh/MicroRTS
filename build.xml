@@ -12,6 +12,7 @@
     <property name="factoryfeud.experiment.map" value="maps/factory-feud/factory-feud-12x12.xml"/>
     <property name="factoryfeud.experiment.seed" value="584"/>
     <property name="factoryfeud.experiment.csv" value="results/factory-feud-experiments.csv"/>
+    <property name="factoryfeud.experiment.strategy" value="adaptive"/>
     <path id="microrts.classpath">
         <pathelement location="bin"/>
         <pathelement location="lib/bots/Coac.jar"/>
@@ -59,6 +60,7 @@
 			<test name="courseproject.FactoryFeudAITest" todir="${junit.output.dir}"/>
 			<test name="courseproject.FactoryFeudExperimentTest" todir="${junit.output.dir}"/>
 			<test name="courseproject.FactoryFeudScenarioVariationTest" todir="${junit.output.dir}"/>
+			<test name="courseproject.FactoryFeudTelemetryTest" todir="${junit.output.dir}"/>
 		    <jvmarg line="-ea -XX:ErrorFile=./hs_err.log -XX:ReplayDataFile=./replay.log"/>
 		    <classpath refid="microrts.classpath"/>
 		</junit>
@@ -106,6 +108,8 @@
 			<arg value="${factoryfeud.experiment.seed}"/>
 			<arg value="--csv"/>
 			<arg value="${factoryfeud.experiment.csv}"/>
+			<arg value="--adaptive-strategy"/>
+			<arg value="${factoryfeud.experiment.strategy}"/>
 		</java>
 	</target>
 	<target name="export_jar" depends="cleanall,build-project">

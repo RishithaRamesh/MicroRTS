@@ -5,6 +5,27 @@ import java.nio.file.Paths;
 
 /** Immutable command-line configuration for paired Factory Feud experiments. */
 public final class FactoryFeudExperimentConfig {
+    public enum AdaptiveStrategy {
+        ADAPTIVE("adaptive"),
+        CARGO_SAFE("cargo-safe");
+
+        private final String commandLineName;
+
+        AdaptiveStrategy(String commandLineName) {
+            this.commandLineName = commandLineName;
+        }
+
+        public String getCommandLineName() { return commandLineName; }
+
+        static AdaptiveStrategy parse(String value) {
+            for (AdaptiveStrategy strategy : values()) {
+                if (strategy.commandLineName.equals(value)) return strategy;
+            }
+            throw new IllegalArgumentException(
+                    "adaptive strategy must be 'adaptive' or 'cargo-safe'");
+        }
+    }
+
     public static final int DEFAULT_MATCH_COUNT = 20;
     public static final int DEFAULT_CYCLES = 500;
     public static final long DEFAULT_SEED = 584L;
@@ -15,9 +36,15 @@ public final class FactoryFeudExperimentConfig {
     private final String mapPath;
     private final long seed;
     private final Path csvPath;
+    private final AdaptiveStrategy adaptiveStrategy;
 
     public FactoryFeudExperimentConfig(
             int matchCount, int cycles, String mapPath, long seed, Path csvPath) {
+        this(matchCount, cycles, mapPath, seed, csvPath, AdaptiveStrategy.ADAPTIVE);
+    }
+
+    public FactoryFeudExperimentConfig(int matchCount, int cycles, String mapPath,
+            long seed, Path csvPath, AdaptiveStrategy adaptiveStrategy) {
         if (matchCount <= 0 || matchCount % 2 != 0) {
             throw new IllegalArgumentException("match count must be a positive even number");
         }
@@ -26,11 +53,15 @@ public final class FactoryFeudExperimentConfig {
             throw new IllegalArgumentException("map path cannot be blank");
         }
         if (csvPath == null) throw new IllegalArgumentException("CSV path cannot be null");
+        if (adaptiveStrategy == null) {
+            throw new IllegalArgumentException("adaptive strategy cannot be null");
+        }
         this.matchCount = matchCount;
         this.cycles = cycles;
         this.mapPath = mapPath;
         this.seed = seed;
         this.csvPath = csvPath;
+        this.adaptiveStrategy = adaptiveStrategy;
     }
 
     public static FactoryFeudExperimentConfig defaults() {
@@ -45,6 +76,7 @@ public final class FactoryFeudExperimentConfig {
         String map = defaults.mapPath;
         long seed = defaults.seed;
         Path csv = defaults.csvPath;
+        AdaptiveStrategy strategy = defaults.adaptiveStrategy;
 
         for (int index = 0; index < args.length; index++) {
             String option = args[index];
@@ -57,9 +89,10 @@ public final class FactoryFeudExperimentConfig {
             else if ("--map".equals(option)) map = value;
             else if ("--seed".equals(option)) seed = Long.parseLong(value);
             else if ("--csv".equals(option)) csv = Paths.get(value);
+            else if ("--adaptive-strategy".equals(option)) strategy = AdaptiveStrategy.parse(value);
             else throw new IllegalArgumentException("Unknown option: " + option);
         }
-        return new FactoryFeudExperimentConfig(matches, cycles, map, seed, csv);
+        return new FactoryFeudExperimentConfig(matches, cycles, map, seed, csv, strategy);
     }
 
     public int getMatchCount() {
@@ -80,5 +113,9 @@ public final class FactoryFeudExperimentConfig {
 
     public Path getCsvPath() {
         return csvPath;
+    }
+
+    public AdaptiveStrategy getAdaptiveStrategy() {
+        return adaptiveStrategy;
     }
 }

@@ -1,6 +1,7 @@
 package courseproject;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import courseproject.factoryfeud.FactoryFeudExperimentConfig;
@@ -46,14 +47,70 @@ public class FactoryFeudExperimentTest {
                             ? record.getPlayer1Score() : record.getPlayer0Score(),
                     record.getFixedScore());
             assertEquals(120, record.getMatchCycles());
+            assertEquals(120, record.getConfiguredCycles());
+            assertEquals(120, record.getCompletedCycles());
+            assertEquals(record.getRuntimeMillis(), record.getSimulationRuntimeMillis());
             assertEquals(0, record.getIllegalActionCount());
+            assertEquals("adaptive", record.getAdaptiveStrategy());
+            assertTrue(record.getAdaptiveCarrier() != null);
+            assertTrue(record.getFixedCarrier() != null);
+            assertNull(record.getCargoSafeCarrier());
+            assertEquals(Integer.valueOf(0),
+                    record.getFixedCarrier().getRoleInterruptions());
         }
 
         List<String> lines = Files.readAllLines(csv, StandardCharsets.UTF_8);
         assertEquals(5, lines.size());
         assertEquals(FactoryFeudExperimentRecord.CSV_HEADER, lines.get(0));
-        assertEquals(17, lines.get(1).split(",", -1).length);
+        assertEquals(47, FactoryFeudExperimentRecord.CSV_HEADER.split(",", -1).length);
+        assertEquals(47, lines.get(1).split(",", -1).length);
+        assertTrue(FactoryFeudExperimentRecord.CSV_HEADER.startsWith(
+                FactoryFeudExperimentRecord.LEGACY_CSV_HEADER + ","));
         assertTrue(lines.get(1).contains(FactoryFeudScenario.DEFAULT_MAP));
+    }
+
+    @Test
+    public void cargoSafeSelectionIsExplicitAndSideSwappedMetricsStayAttributed()
+            throws Exception {
+        Path csv = temporaryFolder.newFile("cargo-safe.csv").toPath();
+        FactoryFeudExperimentConfig config = new FactoryFeudExperimentConfig(
+                2, 120, FactoryFeudScenario.REFINED_NARROW_PASSAGE_MAP, 7L, csv,
+                FactoryFeudExperimentConfig.AdaptiveStrategy.CARGO_SAFE);
+        List<FactoryFeudExperimentRecord> records =
+                FactoryFeudExperimentRunner.run(config).getRecords();
+
+        assertPair(records.get(0), records.get(1), 7L);
+        for (FactoryFeudExperimentRecord record : records) {
+            assertEquals("cargo-safe", record.getAdaptiveStrategy());
+            assertNull(record.getAdaptiveCarrier());
+            assertTrue(record.getCargoSafeCarrier() != null);
+            assertTrue(record.getFixedCarrier() != null);
+            assertEquals(Integer.valueOf(0),
+                    record.getCargoSafeCarrier().getRoleInterruptions());
+            assertEquals(Integer.valueOf(0),
+                    record.getFixedCarrier().getRoleInterruptions());
+        }
+    }
+
+    @Test
+    public void zeroDeliveryCsvUsesBlankTimingCellsAndZeroEventCount() throws Exception {
+        Path csv = temporaryFolder.newFile("no-deliveries.csv").toPath();
+        FactoryFeudExperimentSummary summary = FactoryFeudExperimentRunner.run(
+                new FactoryFeudExperimentConfig(2, 3, FactoryFeudScenario.DEFAULT_MAP,
+                        4L, csv));
+        FactoryFeudExperimentRecord record = summary.getRecords().get(0);
+
+        assertNull(record.getPlayer0Delivery().getFirstCycle());
+        assertNull(record.getPlayer0Delivery().getLastCycle());
+        assertNull(record.getPlayer0Delivery().getMeanInterval());
+        assertEquals(Integer.valueOf(0), record.getPlayer0Delivery().getCompletedEvents());
+
+        String[] cells = Files.readAllLines(csv, StandardCharsets.UTF_8)
+                .get(1).split(",", -1);
+        assertEquals("", cells[20]);
+        assertEquals("", cells[21]);
+        assertEquals("", cells[22]);
+        assertEquals("0", cells[23]);
     }
 
     @Test
