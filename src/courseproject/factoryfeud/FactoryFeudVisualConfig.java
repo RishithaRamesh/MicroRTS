@@ -10,9 +10,11 @@ public final class FactoryFeudVisualConfig {
     private final int cycleDelayMs;
     private final String mapPath;
     private final boolean placeholderMode;
+    private final FactoryFeudExperimentConfig.AdaptiveStrategy adaptiveStrategy;
 
     private FactoryFeudVisualConfig(
-            int timeLimit, int cycleDelayMs, String mapPath, boolean placeholderMode) {
+            int timeLimit, int cycleDelayMs, String mapPath, boolean placeholderMode,
+            FactoryFeudExperimentConfig.AdaptiveStrategy adaptiveStrategy) {
         if (timeLimit <= 0) throw new IllegalArgumentException("time limit must be positive");
         if (cycleDelayMs < 0) {
             throw new IllegalArgumentException("cycle delay must be zero or greater");
@@ -24,6 +26,7 @@ public final class FactoryFeudVisualConfig {
         this.cycleDelayMs = cycleDelayMs;
         this.mapPath = mapPath;
         this.placeholderMode = placeholderMode;
+        this.adaptiveStrategy = adaptiveStrategy;
     }
 
     public static FactoryFeudVisualConfig parse(String[] args) {
@@ -33,6 +36,8 @@ public final class FactoryFeudVisualConfig {
                 ? Integer.parseInt(args[1]) : FactoryFeudVisual.DEFAULT_CYCLE_DELAY_MS;
         String mapPath = FactoryFeudScenario.DEFAULT_MAP;
         boolean placeholderMode = false;
+        FactoryFeudExperimentConfig.AdaptiveStrategy adaptiveStrategy =
+                FactoryFeudExperimentConfig.AdaptiveStrategy.THREAT_AWARE;
 
         if (args.length > 2) {
             // Retain compatibility with the former direct invocation whose third
@@ -41,16 +46,14 @@ public final class FactoryFeudVisualConfig {
             else mapPath = args[2];
         }
         if (args.length > 3) {
-            if (!"placeholder".equalsIgnoreCase(args[3])) {
-                throw new IllegalArgumentException("Unknown visual mode: " + args[3]);
-            }
-            placeholderMode = true;
+            if ("placeholder".equalsIgnoreCase(args[3])) placeholderMode = true;
+            else adaptiveStrategy = FactoryFeudExperimentConfig.AdaptiveStrategy.parse(args[3]);
         }
         if (args.length > 4) {
             throw new IllegalArgumentException("Too many visual runner arguments");
         }
         return new FactoryFeudVisualConfig(
-                timeLimit, cycleDelayMs, mapPath, placeholderMode);
+                timeLimit, cycleDelayMs, mapPath, placeholderMode, adaptiveStrategy);
     }
 
     /** Loads the selected path through the shared scenario validation API. */
@@ -76,5 +79,9 @@ public final class FactoryFeudVisualConfig {
 
     public boolean isPlaceholderMode() {
         return placeholderMode;
+    }
+
+    public FactoryFeudExperimentConfig.AdaptiveStrategy getAdaptiveStrategy() {
+        return adaptiveStrategy;
     }
 }

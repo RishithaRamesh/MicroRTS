@@ -21,6 +21,7 @@ public final class FactoryFeudExperimentSummary {
     private final int player1Wins;
     private final double meanPlayer0ScoreAdvantage;
     private final double meanRuntimeMillis;
+    private final int totalTacticalOverrides;
 
     public FactoryFeudExperimentSummary(List<FactoryFeudExperimentRecord> records) {
         if (records == null || records.isEmpty()) {
@@ -40,6 +41,7 @@ public final class FactoryFeudExperimentSummary {
         long player0Score = 0;
         long player1Score = 0;
         long runtime = 0;
+        int tacticalOverrides = 0;
         for (FactoryFeudExperimentRecord record : records) {
             if (record.getOutcome() == FactoryFeudExperimentRecord.Outcome.ADAPTIVE_WIN) {
                 adaptiveWinCount++;
@@ -58,6 +60,7 @@ public final class FactoryFeudExperimentSummary {
             if (record.getPlayer0Score() > record.getPlayer1Score()) player0WinCount++;
             else if (record.getPlayer1Score() > record.getPlayer0Score()) player1WinCount++;
             runtime += record.getRuntimeMillis();
+            tacticalOverrides += record.getTacticalOverrides();
         }
         adaptiveWins = adaptiveWinCount;
         fixedWins = fixedWinCount;
@@ -74,6 +77,7 @@ public final class FactoryFeudExperimentSummary {
         player1Wins = player1WinCount;
         meanPlayer0ScoreAdvantage = (player0Score - player1Score) / (double) records.size();
         meanRuntimeMillis = runtime / (double) records.size();
+        totalTacticalOverrides = tacticalOverrides;
     }
 
     public List<FactoryFeudExperimentRecord> getRecords() { return records; }
@@ -95,6 +99,7 @@ public final class FactoryFeudExperimentSummary {
     public int getPlayer1Wins() { return player1Wins; }
     public double getMeanPlayer0ScoreAdvantage() { return meanPlayer0ScoreAdvantage; }
     public double getMeanRuntimeMillis() { return meanRuntimeMillis; }
+    public int getTotalTacticalOverrides() { return totalTacticalOverrides; }
 
     public String format() {
         return String.format(Locale.ROOT,
@@ -103,11 +108,11 @@ public final class FactoryFeudExperimentSummary {
                 + "meanScoreDifferential=%.3f meanAdaptiveCasualties=%.3f "
                 + "meanFixedCasualties=%.3f totalRoleReassignments=%d "
                 + "meanRoleReassignments=%.3f player0Wins=%d player1Wins=%d "
-                + "meanPlayer0ScoreAdvantage=%.3f meanRuntimeMillis=%.3f",
+                + "meanPlayer0ScoreAdvantage=%.3f tacticalOverrides=%d meanRuntimeMillis=%.3f",
                 getMatchCount(), adaptiveWins, draws, fixedWins, getAdaptiveWinRate(),
                 meanAdaptiveCocoa, meanFixedCocoa, meanScoreDifferential,
                 meanAdaptiveCasualties, meanFixedCasualties, totalRoleReassignments,
                 getMeanRoleReassignments(), player0Wins, player1Wins,
-                meanPlayer0ScoreAdvantage, meanRuntimeMillis);
+                meanPlayer0ScoreAdvantage, totalTacticalOverrides, meanRuntimeMillis);
     }
 }

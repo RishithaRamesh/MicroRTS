@@ -20,8 +20,6 @@ import rts.units.UnitTypeTable;
 public final class FactoryFeudVisual {
     public static final int DEFAULT_TIME_LIMIT = 500;
     public static final int DEFAULT_CYCLE_DELAY_MS = 50;
-    private static final String CUSTOM_MATCHUP =
-            "P0 AdaptiveRoleAI vs P1 FixedRoleAI";
     private static final String PLACEHOLDER_MATCHUP =
             "PLACEHOLDER: P0 WorkerRush vs P1 WorkerRush";
 
@@ -43,11 +41,6 @@ public final class FactoryFeudVisual {
                 + gameState.getPhysicalGameState().getWidth() + "x"
                 + gameState.getPhysicalGameState().getHeight());
 
-        if (GraphicsEnvironment.isHeadless()) {
-            throw new IllegalStateException(
-                    "Factory Feud visual mode requires a graphical desktop environment");
-        }
-
         int timeLimit = config.getTimeLimit();
         int cycleDelayMs = config.getCycleDelayMs();
         final AdaptiveRoleAI adaptive;
@@ -62,16 +55,25 @@ public final class FactoryFeudVisual {
             player1 = new WorkerRush(utt);
             matchupLabel = PLACEHOLDER_MATCHUP + " | Map: " + mapLabel;
         } else {
-            adaptive = new AdaptiveRoleAI(utt, timeLimit);
+            adaptive = config.getAdaptiveStrategy().create(utt, timeLimit);
             fixed = new FixedRoleAI(utt);
-            player0 = adaptive;
-            player1 = fixed;
-            matchupLabel = CUSTOM_MATCHUP + " | Map: " + mapLabel;
+            player0 = fixed;
+            player1 = adaptive;
+            matchupLabel = "P0 (Blue/Left) FixedRoleAI vs P1 (Pink/Right) "
+                    + adaptive + " | Map: " + mapLabel;
+        }
+        System.out.println("P0 (Blue/Left): " + player0);
+        System.out.println("P1 (Pink/Right): " + player1);
+        System.out.println("Factory Feud matchup: " + matchupLabel);
+
+        if (GraphicsEnvironment.isHeadless()) {
+            throw new IllegalStateException(
+                    "Factory Feud visual mode requires a graphical desktop environment");
         }
 
         FactoryFeudMatch match = new FactoryFeudMatch(gameState, timeLimit, player0, player1);
         FactoryFeudVisualModel visualModel =
-                new FactoryFeudVisualModel(adaptive, fixed, matchupLabel);
+                new FactoryFeudVisualModel(adaptive, fixed, 1, matchupLabel);
 
         WindowParts window = createWindow(match, visualModel, matchupLabel);
         match.run(currentMatch -> {
@@ -89,6 +91,14 @@ public final class FactoryFeudVisual {
             System.out.println("adaptiveRoleChanges=" + adaptive.getRoleChangeCount());
             for (String event : adaptive.getRoleChangeHistory()) {
                 System.out.println("roleChange=" + event);
+            }
+            if (adaptive instanceof ThreatAwareAdaptiveRoleAI) {
+                ThreatAwareAdaptiveRoleAI threatAware = (ThreatAwareAdaptiveRoleAI) adaptive;
+                System.out.println("tacticalOverrides="
+                        + threatAware.getTacticalOverrideCount());
+                for (String event : threatAware.getTacticalOverrideHistory()) {
+                    System.out.println("tacticalOverride=" + event);
+                }
             }
         }
         System.out.println("Close the Factory Feud window to exit.");

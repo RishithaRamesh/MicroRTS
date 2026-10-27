@@ -12,6 +12,7 @@ import ai.core.AI;
 import ai.core.ParameterSpecification;
 import courseproject.factoryfeud.AdaptiveRoleAI;
 import courseproject.factoryfeud.FactoryFeudMatch;
+import courseproject.factoryfeud.FactoryFeudExperimentConfig;
 import courseproject.factoryfeud.FactoryFeudResult;
 import courseproject.factoryfeud.FactoryFeudScenario;
 import courseproject.factoryfeud.FactoryFeudVisualConfig;
@@ -40,7 +41,7 @@ public class FactoryFeudScenarioVariationTest {
     }
 
     @Test
-    public void everyEvaluationMapIsValidReachableAndSymmetric() throws Exception {
+    public void everyEvaluationMapIsStandardizedValidAndReachable() throws Exception {
         assertEquals(5, FactoryFeudScenario.evaluationMaps().size());
         for (String map : FactoryFeudScenario.evaluationMaps()) {
             GameState gs = FactoryFeudScenario.load(map, utt);
@@ -48,12 +49,16 @@ public class FactoryFeudScenarioVariationTest {
             int[] workers = new int[2];
             int[] factories = new int[2];
             int cocoa = 0;
+            int cocoaTotal = 0;
             for (Unit unit : gs.getUnits()) {
                 if (unit.getType().isResource) {
                     cocoa++;
-                    assertTrue(unit.getResources() > 0);
+                    cocoaTotal += unit.getResources();
                 } else if (unit.getPlayer() >= 0) {
-                    if (unit.getType().canHarvest) workers[unit.getPlayer()]++;
+                    if (unit.getType().canHarvest) {
+                        workers[unit.getPlayer()]++;
+                        assertEquals(1, unit.getHitPoints());
+                    }
                     if (unit.getType().isStockpile) factories[unit.getPlayer()]++;
                 }
             }
@@ -61,21 +66,18 @@ public class FactoryFeudScenarioVariationTest {
             assertEquals(4, workers[1]);
             assertEquals(1, factories[0]);
             assertEquals(1, factories[1]);
-            int expectedCocoa = FactoryFeudScenario.REFINED_NARROW_PASSAGE_MAP.equals(map)
-                    ? 4 : 6;
-            assertEquals(expectedCocoa, cocoa);
-            FactoryFeudScenario.validate(pgs, expectedCocoa);
-            assertTrue("Expected balanced geometry and unit placement for " + map,
-                    FactoryFeudScenario.hasBalancedSymmetry(pgs));
+            assertEquals(1, cocoa);
+            assertEquals(120, cocoaTotal);
+            FactoryFeudScenario.validate(pgs, 1);
             FactoryFeudScenario.validateReachability(pgs);
         }
     }
 
     @Test
-    public void refinedNarrowPassageUsesTerrainCorridorAndFourMeaningfulNodes()
+    public void refinedNarrowPassageUsesTerrainCorridorAndStandardizedNode()
             throws Exception {
         GameState gs = FactoryFeudScenario.load(
-                FactoryFeudScenario.REFINED_NARROW_PASSAGE_MAP, utt, 4);
+                FactoryFeudScenario.REFINED_NARROW_PASSAGE_MAP, utt, 1);
         PhysicalGameState pgs = gs.getPhysicalGameState();
         int cocoaTotal = 0;
         Set<String> resourceLocations = new HashSet<>();
@@ -85,15 +87,14 @@ public class FactoryFeudScenarioVariationTest {
             resourceLocations.add(unit.getX() + "," + unit.getY());
         }
 
-        assertEquals(new HashSet<>(Arrays.asList("5,4", "6,7", "3,7", "8,4")),
-                resourceLocations);
+        assertEquals(new HashSet<>(Arrays.asList("5,5")), resourceLocations);
         assertEquals(120, cocoaTotal);
-        assertTrue(FactoryFeudScenario.hasBalancedSymmetry(pgs));
         for (int y = 0; y < pgs.getHeight(); y++) {
             if (y == 5 || y == 6) {
                 assertEquals(PhysicalGameState.TERRAIN_NONE, pgs.getTerrain(5, y));
                 assertEquals(PhysicalGameState.TERRAIN_NONE, pgs.getTerrain(6, y));
-                assertNull(pgs.getUnitAt(5, y));
+                if (y == 5) assertNotNull(pgs.getUnitAt(5, y));
+                else assertNull(pgs.getUnitAt(5, y));
                 assertNull(pgs.getUnitAt(6, y));
             } else if (y <= 3 || y >= 8) {
                 assertTrue(pgs.getTerrain(5, y) != PhysicalGameState.TERRAIN_NONE);
@@ -127,6 +128,17 @@ public class FactoryFeudScenarioVariationTest {
             throws Exception {
         GameState gs = FactoryFeudScenario.load(
                 FactoryFeudScenario.REFINED_NARROW_PASSAGE_MAP, utt);
+        // Preserve this legacy two-sided delivery/combat fixture independently of the
+        // evaluation maps' standardized one-hit Workers.
+        for (Unit unit : gs.getUnits()) {
+            if (unit.getType().canHarvest) unit.setHitPoints(2);
+        }
+        gs.removeUnit(gs.getUnit(0));
+        int[][] cocoaPositions = {{5, 4}, {6, 7}, {3, 7}, {8, 4}};
+        for (int id = 0; id < cocoaPositions.length; id++) {
+            gs.getPhysicalGameState().addUnit(new Unit(id, -1, utt.getUnitType("Resource"),
+                    cocoaPositions[id][0], cocoaPositions[id][1], 30));
+        }
         FactoryFeudMatch match = new FactoryFeudMatch(
                 gs, 500, new AdaptiveRoleAI(utt, 500), new FixedRoleAI(utt));
         FactoryFeudResult result = match.run();
@@ -143,10 +155,9 @@ public class FactoryFeudScenarioVariationTest {
     public void tacticalMapsUseMinimumEscortEffectiveDurability() throws Exception {
         for (String map : FactoryFeudScenario.evaluationMaps()) {
             GameState gs = FactoryFeudScenario.load(map, utt);
-            int expectedHitPoints = FactoryFeudScenario.CONTROL_MAP.equals(map) ? 1 : 2;
             for (Unit unit : gs.getUnits()) {
                 if (unit.getPlayer() >= 0 && unit.getType().canHarvest) {
-                    assertEquals(expectedHitPoints, unit.getHitPoints());
+                    assertEquals(1, unit.getHitPoints());
                 }
             }
         }
@@ -176,6 +187,8 @@ public class FactoryFeudScenarioVariationTest {
         GameState exposedState = exposed.loadScenario(utt);
 
         assertEquals(FactoryFeudScenario.DEFAULT_MAP, defaults.getMapPath());
+        assertEquals(FactoryFeudExperimentConfig.AdaptiveStrategy.THREAT_AWARE,
+                defaults.getAdaptiveStrategy());
         assertEquals(14, exposedState.getPhysicalGameState().getWidth());
         assertEquals(12, exposedState.getPhysicalGameState().getHeight());
     }
@@ -183,7 +196,11 @@ public class FactoryFeudScenarioVariationTest {
     @Test(expected = IllegalArgumentException.class)
     public void reachabilityValidationRejectsSealedCocoa() throws Exception {
         PhysicalGameState pgs = FactoryFeudScenario.load(utt).getPhysicalGameState();
-        Unit cocoa = pgs.getUnit(4);
+        Unit cocoa = null;
+        for (Unit unit : pgs.getUnits()) {
+            if (unit.getType().isResource) cocoa = unit;
+        }
+        assertNotNull(cocoa);
         pgs.setTerrain(cocoa.getX(), cocoa.getY() - 1, 1);
         pgs.setTerrain(cocoa.getX() - 1, cocoa.getY(), 1);
         pgs.setTerrain(cocoa.getX() + 1, cocoa.getY(), 1);

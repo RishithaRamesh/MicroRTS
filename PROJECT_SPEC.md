@@ -49,6 +49,12 @@ minimum tenure, hysteresis, or an equivalent mechanism to prevent role
 thrashing. The fixed-role baseline must not call, inherit, or share the
 adaptive role allocator; only low-level movement/action helpers may be shared.
 
+The final Deliverable 1 demonstration uses `FixedRoleAI` as P0 and
+`ThreatAwareAdaptiveRoleAI` as P1. ThreatAware extends the completed adaptive
+allocator with a small immediate-threat tactical override; it does not replace
+or alter `AdaptiveRoleAI`. The controlled evaluation reports both Adaptive and
+ThreatAware against Fixed with paired side swaps.
+
 Phase 1 implements the scenario, delivery scoring, fixed-duration match
 controller, smoke runner, and correctness tests. Phase 2 implements both
 strategic agents, shared low-level role behaviors, deterministic allocation,
@@ -75,18 +81,14 @@ match, and reports aggregate wins, draws, losses, cocoa scores, score
 differential, and runtime. Phase 3A is a fixed-map pilot and does not by itself
 satisfy the later generated-map and map-metric requirements of Deliverable 3.
 
-Phase 3B adds three project-authored, manually controlled evaluation scenarios:
-contested central cocoa, a cocoa-filled narrow passage, and delivery routes
-with different distances and exposure. The original 12x12 scenario remains the
-control. All evaluation maps must pass team-count, positive-cocoa, terrain
-reachability, and symmetry validation. Tactical scenarios give each Worker two
-starting hit points at the map-instance level; the upstream Worker type is
-unchanged. Two hit points is the smallest tested durability that creates a
-reaction interval after a one-damage strike; the controlled tactical test
-verifies that an escort can use that window to remove an interceptor and
-preserve delivery. Side-swapped evaluation remains mandatory
-because deterministic action ordering and path selection can create residual
-player-position effects even on geometrically symmetric maps.
+Phase 3B adds four project-authored, manually controlled evaluation scenarios:
+contested central cocoa, two narrow-passage variants, and exposed delivery
+routes. The original 12x12 scenario remains the control. All five evaluation
+maps use one 120-cocoa node and one-hit Workers, and must pass team-count,
+positive-cocoa, and terrain-reachability validation. Route asymmetries are
+measured explicitly. Side-swapped evaluation remains mandatory because map
+geometry, deterministic action ordering, and path selection can create
+player-position effects.
 
 ## Implementation order
 

@@ -12,12 +12,22 @@ public final class FactoryFeudVisualModel {
 
     private final AdaptiveRoleAI adaptive;
     private final FixedRoleAI fixed;
+    private final int adaptivePlayer;
     private final String matchupLabel;
 
     public FactoryFeudVisualModel(
             AdaptiveRoleAI adaptive, FixedRoleAI fixed, String matchupLabel) {
+        this(adaptive, fixed, 0, matchupLabel);
+    }
+
+    public FactoryFeudVisualModel(AdaptiveRoleAI adaptive, FixedRoleAI fixed,
+            int adaptivePlayer, String matchupLabel) {
+        if (adaptivePlayer != 0 && adaptivePlayer != 1) {
+            throw new IllegalArgumentException("adaptive player must be 0 or 1");
+        }
         this.adaptive = adaptive;
         this.fixed = fixed;
+        this.adaptivePlayer = adaptivePlayer;
         this.matchupLabel = matchupLabel;
     }
 
@@ -35,12 +45,18 @@ public final class FactoryFeudVisualModel {
                     + "C Collector\nE Escort\nA Attacker\nD Defender";
         }
 
-        StringBuilder text = new StringBuilder("LIVE ROLES\n\nP0 AdaptiveRoleAI\n");
-        appendSurvivingRoles(text, gameState, 0, adaptive.getRoleAssignments());
-        text.append("\nP1 FixedRoleAI\n");
-        appendSurvivingRoles(text, gameState, 1, fixed.getRoleAssignments());
+        StringBuilder text = new StringBuilder("LIVE ROLES\n\n");
+        appendPlayerRoles(text, gameState, 0);
+        text.append('\n');
+        appendPlayerRoles(text, gameState, 1);
         text.append("\nLegend\nC Collector  E Escort\nA Attacker   D Defender\n");
-        text.append("\nAdaptive changes: ").append(adaptive.getRoleChangeCount()).append('\n');
+        text.append("\nP").append(adaptivePlayer).append(" Adaptive changes: ")
+                .append(adaptive.getRoleChangeCount()).append('\n');
+        if (adaptive instanceof ThreatAwareAdaptiveRoleAI) {
+            text.append("Tactical overrides: ")
+                    .append(((ThreatAwareAdaptiveRoleAI) adaptive).getTacticalOverrideCount())
+                    .append('\n');
+        }
 
         List<String> history = adaptive.getRoleChangeHistory();
         if (history.isEmpty()) {
@@ -53,6 +69,16 @@ public final class FactoryFeudVisualModel {
             }
         }
         return text.toString();
+    }
+
+    private void appendPlayerRoles(StringBuilder text, GameState gameState, int player) {
+        if (player == adaptivePlayer) {
+            text.append("P").append(player).append(' ').append(adaptive).append('\n');
+            appendSurvivingRoles(text, gameState, player, adaptive.getRoleAssignments());
+        } else {
+            text.append("P").append(player).append(" FixedRoleAI\n");
+            appendSurvivingRoles(text, gameState, player, fixed.getRoleAssignments());
+        }
     }
 
     private static void appendSurvivingRoles(

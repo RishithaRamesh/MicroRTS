@@ -12,9 +12,13 @@ import rts.GameState;
 import rts.units.Unit;
 import rts.units.UnitTypeTable;
 
-/** Runs one complete headless AdaptiveRoleAI versus FixedRoleAI match. */
+/** Runs one complete headless FixedRoleAI versus adaptive-family match. */
 public final class FactoryFeudPhase2Match {
     public static final int DEFAULT_TIME_LIMIT = 500;
+    public static final int FIXED_PLAYER = 0;
+    public static final int ADAPTIVE_PLAYER = 1;
+    public static final FactoryFeudExperimentConfig.AdaptiveStrategy DEFAULT_STRATEGY =
+            FactoryFeudExperimentConfig.AdaptiveStrategy.THREAT_AWARE;
     private static final int STUCK_THRESHOLD = 50;
 
     private FactoryFeudPhase2Match() {
@@ -22,14 +26,20 @@ public final class FactoryFeudPhase2Match {
 
     public static void main(String[] args) throws Exception {
         int timeLimit = args.length == 0 ? DEFAULT_TIME_LIMIT : Integer.parseInt(args[0]);
+        FactoryFeudExperimentConfig.AdaptiveStrategy strategy = args.length < 2
+                ? DEFAULT_STRATEGY
+                : FactoryFeudExperimentConfig.AdaptiveStrategy.parse(args[1]);
         UnitTypeTable utt = new UnitTypeTable(
                 UnitTypeTable.VERSION_ORIGINAL_FINETUNED,
                 UnitTypeTable.MOVE_CONFLICT_RESOLUTION_CANCEL_BOTH);
         GameState gameState = FactoryFeudScenario.load(utt);
-        AdaptiveRoleAI adaptive = new AdaptiveRoleAI(utt, timeLimit);
+        AdaptiveRoleAI adaptive = strategy.create(utt, timeLimit);
         FixedRoleAI fixed = new FixedRoleAI(utt);
-        FactoryFeudMatch match = new FactoryFeudMatch(gameState, timeLimit, adaptive, fixed);
-        ProgressTracker progress = new ProgressTracker(adaptive, fixed);
+        FactoryFeudMatch match = new FactoryFeudMatch(gameState, timeLimit, fixed, adaptive);
+        ProgressTracker progress = new ProgressTracker(fixed, adaptive);
+
+        System.out.println("P0 (Blue/Left): " + fixed);
+        System.out.println("P1 (Pink/Right): " + adaptive);
 
         long start = System.nanoTime();
         FactoryFeudResult result = match.run(currentMatch ->
@@ -41,6 +51,13 @@ public final class FactoryFeudPhase2Match {
         System.out.println("survivingUnitsP1=" + survivingUnits(gameState, 1));
         System.out.println("adaptiveRoleChanges=" + adaptive.getRoleChangeCount());
         for (String change : adaptive.getRoleChangeHistory()) System.out.println("roleChange=" + change);
+        if (adaptive instanceof ThreatAwareAdaptiveRoleAI) {
+            ThreatAwareAdaptiveRoleAI threatAware = (ThreatAwareAdaptiveRoleAI) adaptive;
+            System.out.println("tacticalOverrides=" + threatAware.getTacticalOverrideCount());
+            for (String event : threatAware.getTacticalOverrideHistory()) {
+                System.out.println("tacticalOverride=" + event);
+            }
+        }
         System.out.println("illegalActionsProposed=" + match.getIllegalActionCount());
         System.out.println("productionActionsFiltered=" + match.getFilteredProductionActionCount());
         System.out.println("potentiallyStuckWorkerIds=" + progress.getPotentiallyStuckUnitIds()

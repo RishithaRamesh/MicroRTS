@@ -2,12 +2,14 @@ package courseproject.factoryfeud;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import rts.units.UnitTypeTable;
 
 /** Immutable command-line configuration for paired Factory Feud experiments. */
 public final class FactoryFeudExperimentConfig {
     public enum AdaptiveStrategy {
         ADAPTIVE("adaptive"),
-        CARGO_SAFE("cargo-safe");
+        CARGO_SAFE("cargo-safe"),
+        THREAT_AWARE("threat-aware");
 
         private final String commandLineName;
 
@@ -17,12 +19,20 @@ public final class FactoryFeudExperimentConfig {
 
         public String getCommandLineName() { return commandLineName; }
 
+        AdaptiveRoleAI create(UnitTypeTable utt, int matchDuration) {
+            if (this == CARGO_SAFE) return new CargoSafeAdaptiveRoleAI(utt, matchDuration);
+            if (this == THREAT_AWARE) {
+                return new ThreatAwareAdaptiveRoleAI(utt, matchDuration);
+            }
+            return new AdaptiveRoleAI(utt, matchDuration);
+        }
+
         static AdaptiveStrategy parse(String value) {
             for (AdaptiveStrategy strategy : values()) {
                 if (strategy.commandLineName.equals(value)) return strategy;
             }
             throw new IllegalArgumentException(
-                    "adaptive strategy must be 'adaptive' or 'cargo-safe'");
+                    "adaptive strategy must be 'adaptive', 'cargo-safe', or 'threat-aware'");
         }
     }
 

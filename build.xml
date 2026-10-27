@@ -8,6 +8,8 @@
     <property name="factoryfeud.cycles" value="500"/>
     <property name="factoryfeud.visual.delay" value="50"/>
     <property name="factoryfeud.visual.map" value="maps/factory-feud/factory-feud-12x12.xml"/>
+    <property name="factoryfeud.visual.strategy" value="threat-aware"/>
+    <property name="factoryfeud.ai.strategy" value="threat-aware"/>
     <property name="factoryfeud.experiment.matches" value="20"/>
     <property name="factoryfeud.experiment.map" value="maps/factory-feud/factory-feud-12x12.xml"/>
     <property name="factoryfeud.experiment.seed" value="584"/>
@@ -58,6 +60,7 @@
 			<test name="microrts.TestPathfinding" todir="${junit.output.dir}"/>
 			<test name="courseproject.FactoryFeudTest" todir="${junit.output.dir}"/>
 			<test name="courseproject.FactoryFeudAITest" todir="${junit.output.dir}"/>
+			<test name="courseproject.ThreatAwareAdaptiveRoleAITest" todir="${junit.output.dir}"/>
 			<test name="courseproject.FactoryFeudExperimentTest" todir="${junit.output.dir}"/>
 			<test name="courseproject.FactoryFeudScenarioVariationTest" todir="${junit.output.dir}"/>
 			<test name="courseproject.FactoryFeudTelemetryTest" todir="${junit.output.dir}"/>
@@ -71,12 +74,13 @@
 			<arg value="${factoryfeud.cycles}"/>
 		</java>
 	</target>
-	<target name="factory-feud-visual" depends="build" description="Visualize AdaptiveRoleAI versus FixedRoleAI">
+	<target name="factory-feud-visual" depends="build" description="Visualize P0 FixedRoleAI versus P1 ThreatAwareAdaptiveRoleAI">
 		<java classname="courseproject.factoryfeud.FactoryFeudVisual" fork="true" failonerror="true">
 			<classpath refid="microrts.classpath"/>
 			<arg value="${factoryfeud.cycles}"/>
 			<arg value="${factoryfeud.visual.delay}"/>
 			<arg value="${factoryfeud.visual.map}"/>
+			<arg value="${factoryfeud.visual.strategy}"/>
 		</java>
 	</target>
 	<target name="factory-feud-visual-placeholder" depends="build" description="Visualize the legacy placeholder WorkerRush matchup">
@@ -88,10 +92,11 @@
 			<arg value="placeholder"/>
 		</java>
 	</target>
-	<target name="factory-feud-ai-smoke" depends="build" description="Run AdaptiveRoleAI versus FixedRoleAI headlessly">
+	<target name="factory-feud-ai-smoke" depends="build" description="Run P0 FixedRoleAI versus P1 ThreatAwareAdaptiveRoleAI headlessly">
 		<java classname="courseproject.factoryfeud.FactoryFeudPhase2Match" fork="true" failonerror="true">
 			<classpath refid="microrts.classpath"/>
 			<arg value="${factoryfeud.cycles}"/>
+			<arg value="${factoryfeud.ai.strategy}"/>
 		</java>
 	</target>
 	<target name="factory-feud-phase2" depends="factory-feud-ai-smoke" description="Legacy alias for factory-feud-ai-smoke"/>
@@ -110,6 +115,11 @@
 			<arg value="${factoryfeud.experiment.csv}"/>
 			<arg value="--adaptive-strategy"/>
 			<arg value="${factoryfeud.experiment.strategy}"/>
+		</java>
+	</target>
+	<target name="factory-feud-controlled-experiment" depends="build" description="Run the fixed five-map Adaptive versus ThreatAware comparison">
+		<java classname="courseproject.factoryfeud.FactoryFeudControlledExperimentRunner" fork="true" failonerror="true">
+			<classpath refid="microrts.classpath"/>
 		</java>
 	</target>
 	<target name="export_jar" depends="cleanall,build-project">

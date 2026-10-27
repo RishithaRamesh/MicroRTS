@@ -62,8 +62,8 @@ public class FactoryFeudExperimentTest {
         List<String> lines = Files.readAllLines(csv, StandardCharsets.UTF_8);
         assertEquals(5, lines.size());
         assertEquals(FactoryFeudExperimentRecord.CSV_HEADER, lines.get(0));
-        assertEquals(47, FactoryFeudExperimentRecord.CSV_HEADER.split(",", -1).length);
-        assertEquals(47, lines.get(1).split(",", -1).length);
+        assertEquals(56, FactoryFeudExperimentRecord.CSV_HEADER.split(",", -1).length);
+        assertEquals(56, lines.get(1).split(",", -1).length);
         assertTrue(FactoryFeudExperimentRecord.CSV_HEADER.startsWith(
                 FactoryFeudExperimentRecord.LEGACY_CSV_HEADER + ","));
         assertTrue(lines.get(1).contains(FactoryFeudScenario.DEFAULT_MAP));
@@ -90,6 +90,29 @@ public class FactoryFeudExperimentTest {
             assertEquals(Integer.valueOf(0),
                     record.getFixedCarrier().getRoleInterruptions());
         }
+    }
+
+    @Test
+    public void threatAwareSelectionRecordsTacticalOverrides() throws Exception {
+        Path csv = temporaryFolder.newFile("threat-aware.csv").toPath();
+        FactoryFeudExperimentConfig config = new FactoryFeudExperimentConfig(
+                2, 120, FactoryFeudScenario.DEFAULT_MAP, 7L, csv,
+                FactoryFeudExperimentConfig.AdaptiveStrategy.THREAT_AWARE);
+        List<FactoryFeudExperimentRecord> records =
+                FactoryFeudExperimentRunner.run(config).getRecords();
+
+        assertPair(records.get(0), records.get(1), 7L);
+        int overrides = 0;
+        int attacks = 0;
+        int retreats = 0;
+        for (FactoryFeudExperimentRecord record : records) {
+            assertEquals("threat-aware", record.getAdaptiveStrategy());
+            overrides += record.getTacticalOverrides();
+            attacks += record.getTacticalAttackOverrides();
+            retreats += record.getTacticalRetreatOverrides();
+        }
+        assertTrue(overrides > 0);
+        assertEquals(overrides, attacks + retreats);
     }
 
     @Test

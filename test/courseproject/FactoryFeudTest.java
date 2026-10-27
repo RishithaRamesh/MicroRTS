@@ -56,21 +56,20 @@ public class FactoryFeudTest {
     }
 
     @Test
-    public void cocoaResourcesAreNeutralAndAtExpectedSymmetricLocations() throws Exception {
+    public void cocoaResourceIsNeutralAndHasTheStandardizedSupply() throws Exception {
         GameState gs = FactoryFeudScenario.load(utt);
         Set<String> actual = new HashSet<>();
         int initialCocoa = 0;
         for (Unit unit : gs.getUnits()) {
             if (unit.getType().isResource) {
                 assertEquals(-1, unit.getPlayer());
-                assertEquals(20, unit.getResources());
+                assertEquals(120, unit.getResources());
                 initialCocoa += unit.getResources();
                 actual.add(unit.getX() + "," + unit.getY());
             }
         }
 
-        Set<String> expected = new HashSet<>(Arrays.asList(
-                "3,5", "8,5", "5,3", "6,3", "5,7", "6,7"));
+        Set<String> expected = new HashSet<>(Arrays.asList("5,6"));
         assertEquals(expected, actual);
         assertEquals(120, initialCocoa);
     }
@@ -83,6 +82,9 @@ public class FactoryFeudTest {
         Unit cocoa = gs.getUnit(0);
         assertNotNull(worker);
         assertNotNull(cocoa);
+        // Isolate harvesting/return timing from the evaluation map's route length.
+        cocoa.setX(3);
+        cocoa.setY(1);
 
         PlayerAction harvest = new PlayerAction();
         harvest.addUnitAction(worker, new UnitAction(UnitAction.TYPE_HARVEST, UnitAction.DIRECTION_RIGHT));
@@ -90,7 +92,7 @@ public class FactoryFeudTest {
         while (worker.getResources() == 0) match.step(new PlayerAction(), new PlayerAction());
 
         assertEquals(worker.getHarvestAmount(), worker.getResources());
-        assertEquals(20 - worker.getHarvestAmount(), cocoa.getResources());
+        assertEquals(120 - worker.getHarvestAmount(), cocoa.getResources());
         assertEquals(0, match.getScore(0));
 
         PlayerAction deliver = new PlayerAction();
@@ -201,6 +203,10 @@ public class FactoryFeudTest {
     @Test
     public void tiedRoleMatchConservesCocoaAndDoesNotExhaustTheMap() throws Exception {
         GameState gs = FactoryFeudScenario.load(utt);
+        // This test verifies cocoa accounting, not the standardized 1-HP combat setup.
+        for (Unit unit : gs.getUnits()) {
+            if (unit.getType().canHarvest) unit.setHitPoints(100);
+        }
         FactoryFeudMatch match = new FactoryFeudMatch(
                 gs, 500, new AdaptiveRoleAI(utt, 500), new FixedRoleAI(utt));
         FactoryFeudResult result = match.run();

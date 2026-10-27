@@ -40,7 +40,7 @@ public final class FactoryFeudExperimentRunner {
         return new FactoryFeudExperimentSummary(records);
     }
 
-    private static FactoryFeudExperimentRecord runMatch(int matchId, int adaptiveSide,
+    static FactoryFeudExperimentRecord runMatch(int matchId, int adaptiveSide,
             long seed, FactoryFeudExperimentConfig config) throws Exception {
         // Public engine RNG used for variable combat damage. The current deterministic
         // unit table has fixed damage, but recording and applying the seed is future-safe.
@@ -49,10 +49,7 @@ public final class FactoryFeudExperimentRunner {
                 UnitTypeTable.VERSION_ORIGINAL_FINETUNED,
                 UnitTypeTable.MOVE_CONFLICT_RESOLUTION_CANCEL_BOTH);
         GameState gameState = FactoryFeudScenario.load(config.getMapPath(), utt);
-        AdaptiveRoleAI adaptive = config.getAdaptiveStrategy()
-                == FactoryFeudExperimentConfig.AdaptiveStrategy.CARGO_SAFE
-                        ? new CargoSafeAdaptiveRoleAI(utt, config.getCycles())
-                        : new AdaptiveRoleAI(utt, config.getCycles());
+        AdaptiveRoleAI adaptive = config.getAdaptiveStrategy().create(utt, config.getCycles());
         FixedRoleAI fixed = new FixedRoleAI(utt);
         AI player0 = adaptiveSide == 0 ? adaptive : fixed;
         AI player1 = adaptiveSide == 1 ? adaptive : fixed;
@@ -65,6 +62,8 @@ public final class FactoryFeudExperimentRunner {
         FactoryFeudMatchTelemetry telemetry = match.getTelemetry();
         int player0Survivors = survivorCount(gameState, 0);
         int player1Survivors = survivorCount(gameState, 1);
+        int player0SurvivingWorkers = workerSurvivorCount(gameState, 0);
+        int player1SurvivingWorkers = workerSurvivorCount(gameState, 1);
         int adaptiveScore = result.getScore(adaptiveSide);
         int fixedScore = result.getScore(1 - adaptiveSide);
         FactoryFeudExperimentRecord.Outcome outcome = adaptiveScore == fixedScore
@@ -83,6 +82,16 @@ public final class FactoryFeudExperimentRunner {
                 telemetry.getCarrierMetrics(1 - adaptiveSide, gameState));
         boolean cargoSafe = config.getAdaptiveStrategy()
                 == FactoryFeudExperimentConfig.AdaptiveStrategy.CARGO_SAFE;
+        ThreatAwareAdaptiveRoleAI threatAware = adaptive instanceof ThreatAwareAdaptiveRoleAI
+                ? (ThreatAwareAdaptiveRoleAI) adaptive : null;
+        int tacticalOverrides = threatAware == null ? 0
+                : threatAware.getTacticalOverrideCount();
+        int tacticalAttackOverrides = threatAware == null ? 0
+                : threatAware.getTacticalAttackOverrideCount();
+        int tacticalRetreatOverrides = threatAware == null ? 0
+                : threatAware.getTacticalRetreatOverrideCount();
+        String exampleAttackOverride = firstOverride(threatAware, "type=attack");
+        String exampleRetreatOverride = firstOverride(threatAware, "type=retreat");
 
         return new FactoryFeudExperimentRecord(matchId, config.getMapPath(), seed,
                 adaptiveSide, result.getScore(0), result.getScore(1), adaptiveScore,
@@ -94,7 +103,12 @@ public final class FactoryFeudExperimentRunner {
                 player0Delivery, player1Delivery,
                 config.getAdaptiveStrategy().getCommandLineName(),
                 cargoSafe ? null : selectedCarrier, fixedCarrier,
-                cargoSafe ? selectedCarrier : null);
+                cargoSafe ? selectedCarrier : null, tacticalOverrides,
+                tacticalAttackOverrides, tacticalRetreatOverrides,
+                player0SurvivingWorkers, player1SurvivingWorkers,
+                adaptiveSide == 0 ? player0SurvivingWorkers : player1SurvivingWorkers,
+                adaptiveSide == 0 ? player1SurvivingWorkers : player0SurvivingWorkers,
+                exampleAttackOverride, exampleRetreatOverride);
     }
 
     private static FactoryFeudExperimentRecord.DeliveryMetrics deliveryMetrics(
@@ -123,7 +137,24 @@ public final class FactoryFeudExperimentRunner {
         return survivors;
     }
 
-    private static void writeCsv(Path csvPath, List<FactoryFeudExperimentRecord> records)
+    private static int workerSurvivorCount(GameState gameState, int player) {
+        int survivors = 0;
+        for (Unit unit : gameState.getUnits()) {
+            if (unit.getPlayer() == player && unit.getType().canHarvest) survivors++;
+        }
+        return survivors;
+    }
+
+    private static String firstOverride(ThreatAwareAdaptiveRoleAI threatAware,
+            String marker) {
+        if (threatAware == null) return null;
+        for (String event : threatAware.getTacticalOverrideHistory()) {
+            if (event.contains(marker)) return event;
+        }
+        return null;
+    }
+
+    static void writeCsv(Path csvPath, List<FactoryFeudExperimentRecord> records)
             throws Exception {
         Path absolute = csvPath.toAbsolutePath();
         Path parent = absolute.getParent();

@@ -110,6 +110,11 @@ Two teams each receive four mobile Workers and one Base/factory.
 Neutral Resources represent cocoa. Matches run for a fixed number of cycles and
 are won by delivering the most cocoa; equal delivery totals are ties.
 
+This submission is based on Farama Foundation microRTS upstream commit
+`72f2fd94039adf3323f4591947e98661a572f927`. The archive is self-contained:
+no patch needs to be applied to another checkout. It targets Java 8 bytecode,
+builds with Apache Ant, and the commands below are run from the repository root.
+
 ### Code ownership
 
 - The existing `src/rts`, `src/ai`, `src/gui`, and related packages are upstream
@@ -169,7 +174,8 @@ ant factory-feud-visual
 ```
 
 By default, the window renders the project-authored 12x12 control map through
-microRTS's existing Swing visualizer. Player 0 is `AdaptiveRoleAI` and Player 1 is `FixedRoleAI`.
+microRTS's existing Swing visualizer. Player 0 (blue/left) is `FixedRoleAI` and
+Player 1 (pink/right) is `ThreatAwareAdaptiveRoleAI`.
 Its HUD shows delivered-cocoa scores and remaining cycles; the side panel shows
 each surviving Worker's ID and role, the role legend, and recent adaptive
 reassignment reasons. The runner uses `FactoryFeudScenario` and delegates every
@@ -195,6 +201,12 @@ ant -Dfactoryfeud.visual.map=maps/factory-feud/factory-feud-exposed-routes-14x12
   factory-feud-visual
 ```
 
+To display the base adaptive variant on Player 1 instead, use:
+
+```shell
+ant -Dfactoryfeud.visual.strategy=adaptive factory-feud-visual
+```
+
 The runner requires a graphical session. It will not launch from a headless SSH
 session or when Java is forced into headless mode.
 
@@ -215,7 +227,8 @@ score, remaining time, threats, endangered collectors, and surviving units. It
 uses deterministic tie-breaking, a reassignment cooldown, and an immediate
 factory-defense override.
 
-Run one complete headless AdaptiveRoleAI versus FixedRoleAI smoke match:
+Run the chosen headless matchup, P0 `FixedRoleAI` versus P1
+`ThreatAwareAdaptiveRoleAI`:
 
 ```shell
 ant factory-feud-ai-smoke
@@ -226,6 +239,9 @@ Override its duration with the same property used by the Phase 1 smoke target:
 ```shell
 ant -Dfactoryfeud.cycles=1000 factory-feud-ai-smoke
 ```
+
+Use `-Dfactoryfeud.ai.strategy=adaptive` to substitute the base `AdaptiveRoleAI`
+on P1. The default ThreatAware output includes tactical attack and retreat events.
 
 The older `factory-feud-phase2` target remains as an alias. Output includes both
 scores, winner, surviving units, adaptive role-change events, proposed illegal
@@ -286,21 +302,17 @@ ant -Dfactoryfeud.experiment.matches=20 \
 ```
 
 Use `-Dfactoryfeud.experiment.strategy=adaptive` (the default) for the original
-workflow. The console summary reports win/draw/loss counts, adaptive-family win
+workflow, or `-Dfactoryfeud.experiment.strategy=threat-aware` for the tactical
+variant. Threat-aware CSV rows and the console summary include the number of
+tactical overrides. The console summary reports win/draw/loss counts, adaptive-family win
 rate (draws remain in the denominator), mean cocoa by strategy, mean score
 differential, and mean runtime. Paired rows share a seed and are controlled
 side swaps, not independent statistical samples.
 
-The current 12x12 map starts both players at zero delivered cocoa and contains
-six 20-unit cocoa nodes (120 cocoa total). Delivery scores are deltas from each
+The current 12x12 control map starts both players at zero delivered cocoa and
+contains one central 120-unit cocoa node. Delivery scores are deltas from each
 player's balance at match-controller construction, so preloaded resources are
-not scored. In the observed 500-cycle symmetric match, both strategies deliver
-16 cocoa while cocoa remains on the map. The repeated 16-16 result is therefore
-not a resource ceiling or starting-balance scoring bug; it follows from the
-symmetric collector routes and deterministic behavior. Combat can reduce
-survivors without disrupting those routes. A fixed agent against `PassiveAI`
-does produce a non-tied delivery result, confirming that the rules permit score
-differences.
+not scored.
 
 For controlled reproduction, the runner creates a fresh map, match controller,
 and independent AI instances for every row and seeds the public microRTS
@@ -322,32 +334,23 @@ evaluation, and map-property analysis remain future work.
 The Phase 3B evaluation set retains the original map as its control and includes
 four manually designed, project-authored variation maps:
 
-- `factory-feud-contested-center-12x12.xml`: all cocoa is concentrated in
-  mirrored central pairs, forcing attackers and escorts into collector routes.
-- `factory-feud-narrow-passage-12x12.xml`: terrain and cocoa form a single
-  traversable central lane where collectors can be intercepted.
-- `factory-feud-narrow-passage-refined-12x12.xml`: a two-cell terrain corridor
-  connects two contested cocoa alcoves, with one alternative cocoa location on
-  each side; it uses four nodes while preserving the control's 120 total cocoa.
-- `factory-feud-exposed-routes-14x12.xml`: near, central, and remote cocoa have
-  different route lengths and exposure while remaining rotationally symmetric.
+- `factory-feud-contested-center-12x12.xml`: open approaches to a contested
+  central resource.
+- `factory-feud-narrow-passage-12x12.xml`: terrain funnels both teams through a
+  central lane.
+- `factory-feud-narrow-passage-refined-12x12.xml`: the corridor and factory
+  placement create deliberately different route lengths by side.
+- `factory-feud-exposed-routes-14x12.xml`: longer open routes increase exposure.
 
 `FactoryFeudScenario` validates every loaded map's player, unit, factory, and
 positive cocoa-node count, rejects overlapping or terrain-embedded units,
 supports an optional caller-selected exact cocoa count, requires positive cocoa
 quantities, and verifies that every Worker shares a terrain component with its
-factory and every cocoa node. Tests also require each registered evaluation map
-to have either left-right or 180-degree player-swapped symmetry.
-
-The control map retains upstream Workers' one hit point. Its one-hit combat
-made escort and defense reactions too late to protect a collector. The four
-tactical maps therefore set each starting Worker instance to two hit points;
-the upstream `Worker` type and combat engine are unchanged. Since Workers deal
-one damage per attack, two is the smallest durability that provides a reaction
-interval after the first hit. The controlled tactical test verifies that an
-escort can use this window to remove an interceptor and preserve delivery; at
-one hit point the collector is lost. This adjustment is symmetric for both
-teams and does not weaken `FixedRoleAI`.
+factory and the cocoa node. All five evaluation maps use exactly one neutral
+120-cocoa resource and eight starting Workers at one hit point. The upstream
+`Worker` type and combat engine are unchanged. Terrain-only route distances are
+reported because the single-resource layouts are not all geometrically or
+path-length symmetric; paired side swaps control for these effects.
 
 Run 20 side-swapped matches on each map by changing only the existing runner's
 map and CSV properties. For example:
@@ -373,6 +376,15 @@ The aggregate output additionally reports mean casualties, total and mean
 adaptive role reassignments, player-0/player-1 wins, and mean player-0 score
 advantage. Side statistics must be examined alongside strategy statistics;
 geometric symmetry does not guarantee identical deterministic engine outcomes.
-The controlled tactical regression demonstrates that an interceptor can stop a
-carried-cocoa delivery and that an escort can eliminate that interceptor and
-restore the delivery.
+
+Run the complete recorded 20-match, five-map comparison (Adaptive and
+ThreatAware against Fixed, both side assignments, seed 584, 500 cycles) with:
+
+```shell
+ant factory-feud-controlled-experiment
+```
+
+This regenerates `results/factory-feud-controlled-seed-584.csv` and
+`results/factory-feud-controlled-seed-584.md`. The existing result files are
+the preserved submission measurements; wall-clock runtime columns may differ
+between machines while deterministic simulation fields remain identical.

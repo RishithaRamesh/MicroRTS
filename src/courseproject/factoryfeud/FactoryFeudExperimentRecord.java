@@ -17,7 +17,8 @@ public final class FactoryFeudExperimentRecord {
             + "player0_mean_delivery_interval_cycles,player0_completed_delivery_events"
             + ",player1_first_delivery_cycle,player1_last_delivery_cycle,"
             + "player1_mean_delivery_interval_cycles,player1_completed_delivery_events"
-            + ",adaptive_strategy"
+            + ",adaptive_strategy,tactical_overrides,tactical_attack_overrides,"
+            + "tactical_retreat_overrides"
             + ",adaptive_carrier_role_interruptions,adaptive_carrier_interrupted_cycles,"
             + "adaptive_carrier_attacks_received,adaptive_carrier_deaths,"
             + "adaptive_undelivered_cocoa_at_end,adaptive_carrier_correction_events"
@@ -26,7 +27,10 @@ public final class FactoryFeudExperimentRecord {
             + "fixed_undelivered_cocoa_at_end,fixed_carrier_correction_events"
             + ",cargo_safe_carrier_role_interruptions,cargo_safe_carrier_interrupted_cycles,"
             + "cargo_safe_carrier_attacks_received,cargo_safe_carrier_deaths,"
-            + "cargo_safe_undelivered_cocoa_at_end,cargo_safe_carrier_correction_events";
+            + "cargo_safe_undelivered_cocoa_at_end,cargo_safe_carrier_correction_events"
+            + ",player0_surviving_workers,player1_surviving_workers,"
+            + "adaptive_surviving_workers,fixed_surviving_workers,"
+            + "example_attack_override,example_retreat_override";
 
     private final int matchId;
     private final String map;
@@ -54,6 +58,15 @@ public final class FactoryFeudExperimentRecord {
     private final CarrierMetrics adaptiveCarrier;
     private final CarrierMetrics fixedCarrier;
     private final CarrierMetrics cargoSafeCarrier;
+    private final int tacticalOverrides;
+    private final int tacticalAttackOverrides;
+    private final int tacticalRetreatOverrides;
+    private final int player0SurvivingWorkers;
+    private final int player1SurvivingWorkers;
+    private final int adaptiveSurvivingWorkers;
+    private final int fixedSurvivingWorkers;
+    private final String exampleAttackOverride;
+    private final String exampleRetreatOverride;
 
     /** Backward-compatible constructor for existing callers and aggregate tests. */
     public FactoryFeudExperimentRecord(int matchId, String map, long seed, int adaptiveSide,
@@ -66,7 +79,12 @@ public final class FactoryFeudExperimentRecord {
                 player1Survivors, adaptiveSurvivors, fixedSurvivors,
                 roleReassignments, illegalActionCount, runtimeMillis,
                 matchCycles, matchCycles, runtimeMillis, DeliveryMetrics.unavailable(),
-                DeliveryMetrics.unavailable(), "adaptive", null, null, null);
+                DeliveryMetrics.unavailable(), "adaptive", null, null, null, 0, 0, 0,
+                Math.max(0, player0Survivors - FactoryFeudScenario.FACTORIES_PER_TEAM),
+                Math.max(0, player1Survivors - FactoryFeudScenario.FACTORIES_PER_TEAM),
+                Math.max(0, adaptiveSurvivors - FactoryFeudScenario.FACTORIES_PER_TEAM),
+                Math.max(0, fixedSurvivors - FactoryFeudScenario.FACTORIES_PER_TEAM),
+                null, null);
     }
 
     public FactoryFeudExperimentRecord(int matchId, String map, long seed, int adaptiveSide,
@@ -77,7 +95,12 @@ public final class FactoryFeudExperimentRecord {
             int completedCycles, long simulationRuntimeMillis,
             DeliveryMetrics player0Delivery, DeliveryMetrics player1Delivery,
             String adaptiveStrategy, CarrierMetrics adaptiveCarrier,
-            CarrierMetrics fixedCarrier, CarrierMetrics cargoSafeCarrier) {
+            CarrierMetrics fixedCarrier, CarrierMetrics cargoSafeCarrier,
+            int tacticalOverrides, int tacticalAttackOverrides,
+            int tacticalRetreatOverrides, int player0SurvivingWorkers,
+            int player1SurvivingWorkers, int adaptiveSurvivingWorkers,
+            int fixedSurvivingWorkers, String exampleAttackOverride,
+            String exampleRetreatOverride) {
         this.matchId = matchId;
         this.map = map;
         this.seed = seed;
@@ -104,6 +127,15 @@ public final class FactoryFeudExperimentRecord {
         this.adaptiveCarrier = adaptiveCarrier;
         this.fixedCarrier = fixedCarrier;
         this.cargoSafeCarrier = cargoSafeCarrier;
+        this.tacticalOverrides = tacticalOverrides;
+        this.tacticalAttackOverrides = tacticalAttackOverrides;
+        this.tacticalRetreatOverrides = tacticalRetreatOverrides;
+        this.player0SurvivingWorkers = player0SurvivingWorkers;
+        this.player1SurvivingWorkers = player1SurvivingWorkers;
+        this.adaptiveSurvivingWorkers = adaptiveSurvivingWorkers;
+        this.fixedSurvivingWorkers = fixedSurvivingWorkers;
+        this.exampleAttackOverride = exampleAttackOverride;
+        this.exampleRetreatOverride = exampleRetreatOverride;
     }
 
     public String toCsvRow() {
@@ -120,10 +152,18 @@ public final class FactoryFeudExperimentRecord {
                 .append(simulationRuntimeMillis);
         appendDelivery(row, player0Delivery);
         appendDelivery(row, player1Delivery);
-        row.append(',').append(csv(adaptiveStrategy));
+        row.append(',').append(csv(adaptiveStrategy)).append(',').append(tacticalOverrides)
+                .append(',').append(tacticalAttackOverrides)
+                .append(',').append(tacticalRetreatOverrides);
         appendCarrier(row, adaptiveCarrier);
         appendCarrier(row, fixedCarrier);
         appendCarrier(row, cargoSafeCarrier);
+        row.append(',').append(player0SurvivingWorkers)
+                .append(',').append(player1SurvivingWorkers)
+                .append(',').append(adaptiveSurvivingWorkers)
+                .append(',').append(fixedSurvivingWorkers)
+                .append(',').append(csv(exampleAttackOverride))
+                .append(',').append(csv(exampleRetreatOverride));
         return row.toString();
     }
 
@@ -178,6 +218,21 @@ public final class FactoryFeudExperimentRecord {
     public CarrierMetrics getAdaptiveCarrier() { return adaptiveCarrier; }
     public CarrierMetrics getFixedCarrier() { return fixedCarrier; }
     public CarrierMetrics getCargoSafeCarrier() { return cargoSafeCarrier; }
+    public int getTacticalOverrides() { return tacticalOverrides; }
+    public int getTacticalAttackOverrides() { return tacticalAttackOverrides; }
+    public int getTacticalRetreatOverrides() { return tacticalRetreatOverrides; }
+    public int getPlayer0SurvivingWorkers() { return player0SurvivingWorkers; }
+    public int getPlayer1SurvivingWorkers() { return player1SurvivingWorkers; }
+    public int getAdaptiveSurvivingWorkers() { return adaptiveSurvivingWorkers; }
+    public int getFixedSurvivingWorkers() { return fixedSurvivingWorkers; }
+    public int getAdaptiveWorkerDeaths() {
+        return FactoryFeudScenario.WORKERS_PER_TEAM - adaptiveSurvivingWorkers;
+    }
+    public int getFixedWorkerDeaths() {
+        return FactoryFeudScenario.WORKERS_PER_TEAM - fixedSurvivingWorkers;
+    }
+    public String getExampleAttackOverride() { return exampleAttackOverride; }
+    public String getExampleRetreatOverride() { return exampleRetreatOverride; }
 
     /** Compares deterministic outputs while intentionally excluding wall-clock runtime fields. */
     public boolean sameSimulationResult(FactoryFeudExperimentRecord other) {
@@ -199,7 +254,16 @@ public final class FactoryFeudExperimentRecord {
                 && Objects.equals(adaptiveStrategy, other.adaptiveStrategy)
                 && Objects.equals(adaptiveCarrier, other.adaptiveCarrier)
                 && Objects.equals(fixedCarrier, other.fixedCarrier)
-                && Objects.equals(cargoSafeCarrier, other.cargoSafeCarrier);
+                && Objects.equals(cargoSafeCarrier, other.cargoSafeCarrier)
+                && tacticalOverrides == other.tacticalOverrides
+                && tacticalAttackOverrides == other.tacticalAttackOverrides
+                && tacticalRetreatOverrides == other.tacticalRetreatOverrides
+                && player0SurvivingWorkers == other.player0SurvivingWorkers
+                && player1SurvivingWorkers == other.player1SurvivingWorkers
+                && adaptiveSurvivingWorkers == other.adaptiveSurvivingWorkers
+                && fixedSurvivingWorkers == other.fixedSurvivingWorkers
+                && Objects.equals(exampleAttackOverride, other.exampleAttackOverride)
+                && Objects.equals(exampleRetreatOverride, other.exampleRetreatOverride);
     }
 
     /** Nullable timing fields use blank CSV cells when unavailable. */
