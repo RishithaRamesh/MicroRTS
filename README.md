@@ -202,9 +202,3 @@ The submitted source archive is intended to be used directly, rather than applie
 For engine documentation and upstream credit, see [Farama Foundation microRTS](https://github.com/Farama-Foundation/MicroRTS). The original microRTS work is attributed to Santiago Ontañón.
 
 **Research inspiration:** Barriga, N., Stanescu, M., and Buro, M. (2017), *Combining Strategic Learning and Tactical Search in Real-Time Strategy Games*, AIIDE. [Paper](https://ojs.aaai.org/index.php/AIIDE/article/view/12922). Our work uses a rule-based strategy/tactics separation; it does not implement the paper's neural-network strategic learning or game-tree tactical search.
-
-## 8. D1 submission contents
-
-The Moodle submission should include a ZIP of the source repository with this README, the Factory Feud source and maps, necessary microRTS files/dependencies, the final PDF writeup (including the architecture diagram and appendix screenshots), and the **3–5-minute Mac-compatible demonstration video** according to the Moodle upload instructions.
-
-**The video is mandatory under the D1 handout.** A common compatible format is MP4 with H.264 video.
