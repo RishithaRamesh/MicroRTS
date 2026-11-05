@@ -1,6 +1,6 @@
-# Factory Feud: Adaptive Role Assignment and Threat-Aware AI
+# Factory Feud: Adaptive AI and Procedural Map Generation
 
-**CSC 584: Building Game AI | Deliverable 1: Strategic Decision Making**
+**CSC 584: Building Game AI | Deliverables 1–2**
 
 Factory Feud is a competitive cocoa-delivery real-time strategy scenario implemented using the Java **microRTS** engine. It compares a project-authored **AdaptiveRoleAI** against a project-authored **FixedRoleAI** baseline. The goal is to study whether dynamic role assignment and threat-aware actions improve cocoa deliveries.
 
@@ -180,6 +180,37 @@ ant factory-feud-smoke
 # Reusable five-map evaluation (or any XML maps currently in the folder)
 ant factory-feud-evaluate
 ```
+
+### Deliverable 2 procedural-map workflow
+
+The complete reproducible Phase 2 workflow is:
+
+```bash
+# Compile and run the PCG-specific tests without the unrelated upstream trace fixture
+ant clean build
+ant factory-feud-generation-tests
+
+# Generate 120 accepted maps: 40 maps from each family
+ant factory-feud-generate
+
+# Produce four property-distribution plots, descriptive statistics, and observations
+ant factory-feud-plot
+
+# Run one complete 500-cycle FixedRoleAI versus AdaptiveRoleAI match
+ant -Dfactoryfeud.ai.map=maps/factory-feud/generated/factory-feud-pcg-v1-open-001-sparse-seed-584000-16x12.xml \
+    factory-feud-ai-smoke
+
+# Launch the same generated map visually; a graphical desktop is required
+ant -Dfactoryfeud.visual.map=maps/factory-feud/generated/factory-feud-pcg-v1-open-001-sparse-seed-584000-16x12.xml \
+    factory-feud-visual
+```
+
+Generated XML is isolated under `maps/factory-feud/generated/`. Batch CSV data is
+written to `results/factory-feud-d2/`, and plots and descriptive statistics are
+written to `results/factory-feud-d2/plots/`. Existing handcrafted maps and D1
+results are not used as fallbacks or overwritten. Detailed parameters, schemas,
+validity rules, and limitations are documented in
+[`docs/FACTORY_FEUD_D2.md`](docs/FACTORY_FEUD_D2.md).
 
 A successful `ant clean build` is a clean compilation in the current checkout. For a true clean-checkout test, extract/clone the submission into a new directory and repeat the quick-start commands there.
 
