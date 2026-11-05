@@ -40,10 +40,6 @@ public final class FactoryFeudGeneratorConfig {
         if (maxAttempts <= 0) {
             throw new IllegalArgumentException("maximum attempt count must be positive");
         }
-        if (family == null) throw new IllegalArgumentException("map family cannot be null");
-        if (maxAttempts <= 0) {
-            throw new IllegalArgumentException("maximum attempt count must be positive");
-        }
         int targetObstacles = (int) Math.round(width * height * obstacleDensity);
         if (family == FactoryFeudMapFamily.CHOKEPOINT
                 && targetObstacles < height - 2) {

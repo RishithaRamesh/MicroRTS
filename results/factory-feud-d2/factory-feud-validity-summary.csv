@@ -1,0 +1,5 @@
+group,accepted_maps,total_attempts,valid_attempts,invalid_attempts,raw_validity_rate
+OPEN,40,40,40,0,1.00000000
+OBSTACLE_FIELD,40,40,40,0,1.00000000
+CHOKEPOINT,40,42,40,2,0.95238095
+OVERALL,120,122,120,2,0.98360656

@@ -29,10 +29,12 @@ public final class FactoryFeudPhase2Match {
         FactoryFeudExperimentConfig.AdaptiveStrategy strategy = args.length < 2
                 ? DEFAULT_STRATEGY
                 : FactoryFeudExperimentConfig.AdaptiveStrategy.parse(args[1]);
+        String mapPath = args.length < 3 ? FactoryFeudScenario.DEFAULT_MAP : args[2];
+        if (args.length > 3) throw new IllegalArgumentException("Too many match arguments");
         UnitTypeTable utt = new UnitTypeTable(
                 UnitTypeTable.VERSION_ORIGINAL_FINETUNED,
                 UnitTypeTable.MOVE_CONFLICT_RESOLUTION_CANCEL_BOTH);
-        GameState gameState = FactoryFeudScenario.load(utt);
+        GameState gameState = FactoryFeudScenario.load(mapPath, utt);
         OldAdaptiveRoleAI adaptive = strategy.create(utt, timeLimit);
         FixedRoleAI fixed = new FixedRoleAI(utt);
         FactoryFeudMatch match = new FactoryFeudMatch(gameState, timeLimit, fixed, adaptive);
@@ -40,6 +42,7 @@ public final class FactoryFeudPhase2Match {
 
         System.out.println("P0 (Blue/Left): " + fixed);
         System.out.println("P1 (Pink/Right): " + adaptive);
+        System.out.println("map=" + mapPath);
 
         long start = System.nanoTime();
         FactoryFeudResult result = match.run(currentMatch ->
