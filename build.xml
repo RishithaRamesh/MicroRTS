@@ -75,6 +75,7 @@
 			<test name="courseproject.AdaptiveRoleAITest" todir="${junit.output.dir}"/>
 			<test name="courseproject.FactoryFeudExperimentTest" todir="${junit.output.dir}"/>
 			<test name="courseproject.FactoryFeudScenarioVariationTest" todir="${junit.output.dir}"/>
+			<test name="courseproject.FactoryFeudVisualConfigTest" todir="${junit.output.dir}"/>
 			<test name="courseproject.FactoryFeudTelemetryTest" todir="${junit.output.dir}"/>
 			<test name="courseproject.factoryfeud.generation.FactoryFeudMapGeneratorTest" todir="${junit.output.dir}"/>
 			<test name="courseproject.factoryfeud.generation.FactoryFeudBatchGeneratorTest" todir="${junit.output.dir}"/>

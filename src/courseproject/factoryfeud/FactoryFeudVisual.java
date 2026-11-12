@@ -8,8 +8,10 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GraphicsEnvironment;
+import java.awt.GridLayout;
 import javax.swing.BorderFactory;
 import javax.swing.JLabel;
+import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTextArea;
@@ -22,6 +24,10 @@ import rts.units.UnitTypeTable;
 public final class FactoryFeudVisual {
     public static final int DEFAULT_TIME_LIMIT = 500;
     public static final int DEFAULT_CYCLE_DELAY_MS = 50;
+    private static final int WINDOW_WIDTH = 980;
+    private static final int WINDOW_HEIGHT = 760;
+    private static final int HUD_HEIGHT = 58;
+    private static final double BOARD_RESIZE_WEIGHT = 0.70;
     private static final String PLACEHOLDER_MATCHUP =
             "PLACEHOLDER: P0 WorkerRush vs P1 WorkerRush";
 
@@ -35,9 +41,9 @@ public final class FactoryFeudVisual {
                 UnitTypeTable.VERSION_ORIGINAL_FINETUNED,
                 UnitTypeTable.MOVE_CONFLICT_RESOLUTION_CANCEL_BOTH);
         GameState gameState = config.loadScenario(utt);
-        String mapLabel = config.getMapName() + " ("
-                + gameState.getPhysicalGameState().getWidth() + "x"
-                + gameState.getPhysicalGameState().getHeight() + ")";
+        String mapLabel = config.getMapDisplayName(
+                gameState.getPhysicalGameState().getWidth(),
+                gameState.getPhysicalGameState().getHeight());
         System.out.println("Factory Feud visual map: " + config.getMapPath());
         System.out.println("Factory Feud visual dimensions: "
                 + gameState.getPhysicalGameState().getWidth() + "x"
@@ -79,8 +85,8 @@ public final class FactoryFeudVisual {
 
         WindowParts window = createWindow(match, visualModel, matchupLabel);
         match.run(currentMatch -> {
-            refreshWindow(window, currentMatch, visualModel);
-            if (cycleDelayMs > 0 && window.frame.isDisplayable()) {
+            boolean windowOpen = refreshWindow(window, currentMatch, visualModel);
+            if (cycleDelayMs > 0 && windowOpen) {
                 Thread.sleep(cycleDelayMs);
             }
         });
@@ -112,35 +118,49 @@ public final class FactoryFeudVisual {
         final WindowParts[] windowHolder = new WindowParts[1];
         SwingUtilities.invokeAndWait(() -> {
             PhysicalGameStateJFrame frame = PhysicalGameStatePanel.newVisualizer(
-                    match.getGameState(), 980, 760, false,
+                    match.getGameState(), WINDOW_WIDTH, WINDOW_HEIGHT, false,
                     PhysicalGameStatePanel.COLORSCHEME_BLACK);
             frame.setTitle("Factory Feud - " + matchupLabel);
-            JLabel hud = createHud(model.hudText(match));
+            HudParts hud = createHud(model.hudStatusText(match), matchupLabel);
             JTextArea rolePanel = createRolePanel(model.rolePanelText(match.getGameState()));
             JScrollPane roleScroller = createRoleScroller(rolePanel);
             frame.getContentPane().remove(frame.getPanel());
             JSplitPane mainSplit = createMainSplit(frame, roleScroller);
-            frame.getContentPane().add(hud, java.awt.BorderLayout.SOUTH);
+            frame.getContentPane().add(hud.panel, java.awt.BorderLayout.SOUTH);
             frame.getContentPane().add(mainSplit, java.awt.BorderLayout.CENTER);
             frame.getPanel().setMinimumSize(new Dimension(360, 360));
-            frame.setMinimumSize(new Dimension(720, 540));
-            frame.setResizable(true);
             frame.validate();
-            mainSplit.setDividerLocation(0.70);
+            mainSplit.setDividerLocation(BOARD_RESIZE_WEIGHT);
+            frame.setSize(WINDOW_WIDTH, WINDOW_HEIGHT);
+            frame.setResizable(false);
             frame.repaint();
-            windowHolder[0] = new WindowParts(frame, hud, rolePanel);
+            windowHolder[0] = new WindowParts(frame, hud.status, rolePanel);
         });
         return windowHolder[0];
     }
 
-    private static JLabel createHud(String text) {
-        JLabel hud = new JLabel(text, SwingConstants.CENTER);
+    private static HudParts createHud(String statusText, String matchupText) {
+        JPanel hud = new JPanel(new GridLayout(2, 1));
         hud.setOpaque(true);
         hud.setBackground(new Color(34, 39, 46));
-        hud.setForeground(Color.WHITE);
-        hud.setFont(hud.getFont().deriveFont(Font.BOLD, 15.0f));
-        hud.setBorder(BorderFactory.createEmptyBorder(10, 8, 10, 8));
-        return hud;
+        hud.setBorder(BorderFactory.createEmptyBorder(6, 8, 6, 8));
+        Dimension fixedSize = new Dimension(0, HUD_HEIGHT);
+        hud.setPreferredSize(fixedSize);
+        hud.setMinimumSize(fixedSize);
+        hud.setMaximumSize(new Dimension(Integer.MAX_VALUE, HUD_HEIGHT));
+
+        JLabel status = createHudLine(statusText);
+        JLabel matchup = createHudLine(matchupText);
+        hud.add(status);
+        hud.add(matchup);
+        return new HudParts(hud, status);
+    }
+
+    private static JLabel createHudLine(String text) {
+        JLabel line = new JLabel(text, SwingConstants.CENTER);
+        line.setForeground(Color.WHITE);
+        line.setFont(line.getFont().deriveFont(Font.BOLD, 15.0f));
+        return line;
     }
 
     private static JTextArea createRolePanel(String text) {
@@ -158,7 +178,7 @@ public final class FactoryFeudVisual {
 
     private static JScrollPane createRoleScroller(JTextArea rolePanel) {
         JScrollPane scroller = new JScrollPane(rolePanel,
-                JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
+                JScrollPane.VERTICAL_SCROLLBAR_ALWAYS,
                 JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         scroller.setPreferredSize(new Dimension(280, 680));
         scroller.setMinimumSize(new Dimension(230, 0));
@@ -174,21 +194,38 @@ public final class FactoryFeudVisual {
         split.setBorder(BorderFactory.createEmptyBorder());
         split.setContinuousLayout(true);
         split.setOneTouchExpandable(true);
-        split.setResizeWeight(0.70);
+        split.setResizeWeight(BOARD_RESIZE_WEIGHT);
         return split;
     }
 
-    private static void refreshWindow(
+    private static boolean refreshWindow(
             WindowParts window, FactoryFeudMatch match, FactoryFeudVisualModel model)
             throws Exception {
-        if (!window.frame.isDisplayable()) return;
+        final boolean[] displayable = new boolean[1];
         SwingUtilities.invokeAndWait(() -> {
+            displayable[0] = window.frame.isDisplayable();
+            if (!displayable[0]) return;
             window.frame.setStateCloning(match.getGameState());
-            window.hud.setText(model.hudText(match));
-            window.rolePanel.setText(model.rolePanelText(match.getGameState()));
-            window.rolePanel.setCaretPosition(0);
-            window.frame.repaint();
+            String hudText = model.hudStatusText(match);
+            if (!hudText.equals(window.hud.getText())) window.hud.setText(hudText);
+            String roleText = model.rolePanelText(match.getGameState());
+            if (!roleText.equals(window.rolePanel.getText())) {
+                window.rolePanel.setText(roleText);
+                window.rolePanel.setCaretPosition(0);
+            }
+            window.frame.getPanel().repaint();
         });
+        return displayable[0];
+    }
+
+    private static final class HudParts {
+        private final JPanel panel;
+        private final JLabel status;
+
+        private HudParts(JPanel panel, JLabel status) {
+            this.panel = panel;
+            this.status = status;
+        }
     }
 
     private static final class WindowParts {

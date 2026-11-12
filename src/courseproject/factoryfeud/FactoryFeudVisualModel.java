@@ -32,11 +32,17 @@ public final class FactoryFeudVisualModel {
     }
 
     public String hudText(FactoryFeudMatch match) {
+        return "<html><div style='text-align:center'>" + hudStatusText(match)
+                + "<br>" + matchupLabel + "</div></html>";
+    }
+
+    /** Single-line status text for the fixed-height Swing HUD. */
+    public String hudStatusText(FactoryFeudMatch match) {
         String status = match.isFinished() ? winnerText(match) : "Match running";
-        return "<html><div style='text-align:center'>Factory Feud | Cocoa delivered: P0 "
+        return "Factory Feud | Cocoa delivered: P0 "
                 + match.getScore(0) + " - P1 " + match.getScore(1)
                 + " | Cycles remaining: " + match.getRemainingCycles()
-                + " | " + status + "<br>" + matchupLabel + "</div></html>";
+                + " | " + status;
     }
 
     public String rolePanelText(GameState gameState) {

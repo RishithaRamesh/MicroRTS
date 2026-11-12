@@ -1,11 +1,20 @@
 package courseproject.factoryfeud;
 
 import java.io.File;
+import java.util.Locale;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import rts.GameState;
 import rts.units.UnitTypeTable;
 
 /** Immutable, headless-testable configuration for the Factory Feud visual runner. */
 public final class FactoryFeudVisualConfig {
+    private static final Pattern GENERATED_MAP_NAME = Pattern.compile(
+            "^factory-feud-pcg-v[0-9]+-(open|obstacle-field|chokepoint)-"
+                    + "([0-9]+)-(sparse|low|medium|high)-seed-[0-9]+-"
+                    + "([0-9]+)x([0-9]+)\\.xml$",
+            Pattern.CASE_INSENSITIVE);
+
     private final int timeLimit;
     private final int cycleDelayMs;
     private final String mapPath;
@@ -75,6 +84,21 @@ public final class FactoryFeudVisualConfig {
 
     public String getMapName() {
         return new File(mapPath).getName();
+    }
+
+    /** Returns a compact generated-map label or the existing handcrafted-map label. */
+    public String getMapDisplayName(int mapWidth, int mapHeight) {
+        String mapName = getMapName();
+        Matcher generated = GENERATED_MAP_NAME.matcher(mapName);
+        if (!generated.matches()) {
+            return mapName + " (" + mapWidth + "x" + mapHeight + ")";
+        }
+
+        String family = generated.group(1).toUpperCase(Locale.ROOT).replace('-', '_');
+        String density = generated.group(3).toLowerCase(Locale.ROOT);
+        density = Character.toUpperCase(density.charAt(0)) + density.substring(1);
+        return family + "-" + generated.group(2) + " | " + density + " | "
+                + generated.group(4) + "\u00d7" + generated.group(5);
     }
 
     public boolean isPlaceholderMode() {

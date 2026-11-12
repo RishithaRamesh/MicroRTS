@@ -3,6 +3,7 @@
 
 import argparse
 import csv
+import math
 import os
 import statistics
 import tempfile
@@ -20,7 +21,10 @@ import matplotlib.pyplot as plt
 
 METRICS = (
     ("actual_density", "Actual obstacle density"),
-    ("mean_path_length", "Mean factory-to-cocoa path length"),
+    (
+        "mean_path_length",
+        "Mean terrain center-to-center shortest path length",
+    ),
     ("route_imbalance", "Route imbalance"),
     ("dead_end_count", "Dead-end count"),
 )
@@ -158,16 +162,40 @@ def write_observations(rows, output):
             family: statistics.fmean(row[metric] for row in by_family[family])
             for family in FAMILY_ORDER
         }
-        highest = max(means, key=means.get)
-        lowest = min(means, key=means.get)
+        highest_value = max(means.values())
+        lowest_value = min(means.values())
+        highest = [
+            family
+            for family in FAMILY_ORDER
+            if math.isclose(means[family], highest_value, rel_tol=1e-12, abs_tol=1e-12)
+        ]
+        lowest = [
+            family
+            for family in FAMILY_ORDER
+            if math.isclose(means[family], lowest_value, rel_tol=1e-12, abs_tol=1e-12)
+        ]
+        if len(highest) == 1:
+            highest_text = f"highest family mean was `{highest[0]}`"
+        else:
+            highest_text = "highest family mean was tied between " + " and ".join(
+                f"`{family}`" for family in highest
+            )
+        if len(lowest) == 1:
+            lowest_text = f"lowest was `{lowest[0]}`"
+        else:
+            lowest_text = "lowest was tied between " + " and ".join(
+                f"`{family}`" for family in lowest
+            )
         lines.append(
-            f"- {label}: highest family mean was `{highest}` ({means[highest]:.3f}); "
-            f"lowest was `{lowest}` ({means[lowest]:.3f})."
+            f"- {label}: {highest_text} ({highest_value:.3f}); "
+            f"{lowest_text} ({lowest_value:.3f})."
         )
     lines.extend(
         [
             "",
-            "The family-and-preset panels retain all individual observations through boxplot distributions. Differences should be interpreted alongside the requested densities because preset numeric values are family-specific.",
+            "Path length is a terrain-level center-to-center proxy from each Base tile to the Resource tile. It is not the exact Worker travel distance because both endpoint tiles are occupied. On the fixed 16x12 batch layout, the unobstructed center-to-center distances are 7 cells for player 0 and 6 for player 1, so route imbalance has a built-in one-cell baseline.",
+            "",
+            "The family-and-preset boxplots summarize the distributions; they do not display every individual observation. OPEN also uses lower obstacle-density presets than OBSTACLE_FIELD and CHOKEPOINT, so differences between OPEN and the other families cannot be attributed solely to the family-generation algorithm.",
             "",
         ]
     )

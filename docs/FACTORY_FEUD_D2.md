@@ -88,8 +88,10 @@ Handcrafted XML files are outside the generated directory.
 
 `results/factory-feud-d2/factory-feud-generated-maps.csv` contains one row per
 accepted map with family, density preset, map seed, dimensions, requested and
-actual obstacle density, both factory-to-cocoa paths, route imbalance, dead-end
-count, attempts required, and XML path.
+actual obstacle density, both terrain center-to-center shortest path lengths,
+route imbalance, dead-end count, attempts required, and XML path. The existing
+`player0_path_length` and `player1_path_length` column names are retained for
+compatibility.
 
 `factory-feud-generation-attempts.csv` contains every raw attempt, including
 invalid candidates and rejection reasons. `factory-feud-validity-summary.csv`
@@ -124,6 +126,18 @@ ant -Dfactoryfeud.visual.map=maps/factory-feud/generated/factory-feud-pcg-v1-ope
 
 - Validity guarantees connectivity and rules compliance, not balanced tactical
   difficulty or equal path lengths. Route imbalance is measured for analysis.
+- Each reported path length is a terrain-level center-to-center proxy from a
+  Base tile to the Resource tile. It is not the exact traversable Worker route,
+  because the Base and Resource tiles are occupied and Workers interact from
+  adjacent cells.
+- With the fixed 16×12 batch placement, player 0's Base-to-Resource center
+  distance is seven cells and player 1's is six before obstacles. Route
+  imbalance therefore has a built-in one-cell baseline.
+- OPEN uses lower density presets than OBSTACLE_FIELD and CHOKEPOINT. Differences
+  between OPEN and those families cannot be attributed solely to the generation
+  algorithm; density and family are confounded in that comparison.
+- The submitted 120-map batch uses one fixed 16×12 size. Width and height remain
+  configurable and are tested, but dimension variation is outside this batch.
 - Dead ends are terrain-topology measurements and ignore temporary unit
   occupancy.
 - The batch is descriptive; formal significance testing is outside this phase.
