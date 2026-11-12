@@ -89,6 +89,12 @@
 			<arg value="${factoryfeud.cycles}"/>
 		</java>
 	</target>
+	<target name="factory-feud-invalid-map-diagnostic" depends="build" description="Export the audited invalid CHOKEPOINT seed 2584001 candidate">
+		<java classname="courseproject.factoryfeud.generation.FactoryFeudInvalidMapDiagnostic" fork="true" failonerror="true">
+			<classpath refid="microrts.classpath"/>
+			<jvmarg value="-Djava.awt.headless=true"/>
+		</java>
+	</target>
 	<target name="factory-feud-visual" depends="build" description="Visualize P0 FixedRoleAI versus P1 AdaptiveRoleAI">
 		<java classname="courseproject.factoryfeud.FactoryFeudVisual" fork="true" failonerror="true">
 			<classpath refid="microrts.classpath"/>

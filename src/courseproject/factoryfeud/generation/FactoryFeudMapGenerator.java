@@ -72,7 +72,7 @@ public final class FactoryFeudMapGenerator {
         return value ^ (value >>> 31);
     }
 
-    private static PhysicalGameState createCandidate(FactoryFeudGeneratorConfig config,
+    static PhysicalGameState createCandidate(FactoryFeudGeneratorConfig config,
             UnitTypeTable utt, Random random) {
         PhysicalGameState pgs = new PhysicalGameState(config.getWidth(), config.getHeight());
         pgs.addPlayer(new Player(0, 0));
