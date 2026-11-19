@@ -26,6 +26,10 @@
 	    <property name="factoryfeud.pcg.max.attempts" value="100"/>
 	    <property name="factoryfeud.pcg.map.dir" value="maps/factory-feud/generated"/>
 	    <property name="factoryfeud.pcg.analysis.dir" value="results/factory-feud-d2"/>
+	    <property name="factoryfeud.d3.metadata" value="results/factory-feud-d2/factory-feud-generated-maps.csv"/>
+	    <property name="factoryfeud.d3.output.dir" value="results/factory-feud-d3"/>
+	    <property name="factoryfeud.d3.seed" value="3584"/>
+	    <property name="factoryfeud.d3.selections.per.preset" value="2"/>
     <path id="microrts.classpath">
         <pathelement location="bin"/>
         <pathelement location="lib/bots/Coac.jar"/>
@@ -79,6 +83,7 @@
 			<test name="courseproject.FactoryFeudTelemetryTest" todir="${junit.output.dir}"/>
 			<test name="courseproject.factoryfeud.generation.FactoryFeudMapGeneratorTest" todir="${junit.output.dir}"/>
 			<test name="courseproject.factoryfeud.generation.FactoryFeudBatchGeneratorTest" todir="${junit.output.dir}"/>
+			<test name="courseproject.factoryfeud.FactoryFeudD3ExperimentRunnerTest" todir="${junit.output.dir}"/>
 		    <jvmarg line="-ea -XX:ErrorFile=./hs_err.log -XX:ReplayDataFile=./replay.log"/>
 		    <classpath refid="microrts.classpath"/>
 		</junit>
@@ -188,6 +193,47 @@
 			<jvmarg line="-ea -XX:ErrorFile=./hs_err.log -XX:ReplayDataFile=./replay.log"/>
 			<classpath refid="microrts.classpath"/>
 		</junit>
+	</target>
+	<target name="factory-feud-d3-tests" depends="build" description="Run Deliverable 3 selection, formula, schema, and smoke tests">
+		<mkdir dir="${junit.output.dir}"/>
+		<junit fork="yes" haltonfailure="yes" filtertrace="off" maxmemory="4096m">
+			<formatter type="plain" usefile="false"/>
+			<test name="courseproject.factoryfeud.FactoryFeudD3ExperimentRunnerTest" todir="${junit.output.dir}"/>
+			<jvmarg line="-ea -XX:ErrorFile=./hs_err.log -XX:ReplayDataFile=./replay.log"/>
+			<classpath refid="microrts.classpath"/>
+		</junit>
+	</target>
+	<target name="factory-feud-d3-experiment" depends="build" description="Run all 96 Deliverable 3 matches">
+		<java classname="courseproject.factoryfeud.FactoryFeudD3ExperimentRunner" fork="true" failonerror="true">
+			<classpath refid="microrts.classpath"/>
+			<arg value="--metadata"/><arg value="${factoryfeud.d3.metadata}"/>
+			<arg value="--output-dir"/><arg value="${factoryfeud.d3.output.dir}"/>
+			<arg value="--selections-per-preset"/><arg value="${factoryfeud.d3.selections.per.preset}"/>
+			<arg value="--cycles"/><arg value="${factoryfeud.cycles}"/>
+			<arg value="--seed"/><arg value="${factoryfeud.d3.seed}"/>
+		</java>
+	</target>
+	<target name="factory-feud-d3-smoke" depends="build" description="Run a short balanced D3 smoke experiment">
+		<antcall target="factory-feud-d3-experiment">
+			<param name="factoryfeud.d3.selections.per.preset" value="1"/>
+			<param name="factoryfeud.cycles" value="25"/>
+			<param name="factoryfeud.d3.output.dir" value="results/factory-feud-d3-smoke"/>
+		</antcall>
+	</target>
+	<target name="factory-feud-d3-plot" description="Analyze D3 results and generate figures">
+		<exec executable="python3" failonerror="true">
+			<arg value="scripts/factory_feud_d3_analysis.py"/>
+			<arg value="--input"/><arg value="${factoryfeud.d3.output.dir}/match-results.csv"/>
+			<arg value="--output-dir"/><arg value="${factoryfeud.d3.output.dir}/plots"/>
+		</exec>
+	</target>
+	<target name="factory-feud-d3-captures" depends="build" description="Replay audited D3 cases and export native gameplay screenshots">
+		<java classname="courseproject.factoryfeud.FactoryFeudD3ScreenshotExporter" fork="true" failonerror="true">
+			<classpath refid="microrts.classpath"/>
+			<jvmarg value="-Djava.awt.headless=true"/>
+			<arg value="--results"/><arg value="${factoryfeud.d3.output.dir}/match-results.csv"/>
+			<arg value="--output-dir"/><arg value="${factoryfeud.d3.output.dir}/gameplay-captures"/>
+		</java>
 	</target>
 	<target name="export_jar" depends="cleanall,build-project">
 		<mkdir dir="build" />

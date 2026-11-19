@@ -42,6 +42,12 @@ public final class FactoryFeudExperimentRunner {
 
     static FactoryFeudExperimentRecord runMatch(int matchId, int adaptiveSide,
             long seed, FactoryFeudExperimentConfig config) throws Exception {
+        return executeMatch(matchId, adaptiveSide, seed, config).record;
+    }
+
+    /** Shared execution path used by D1 and D3; D3 also needs final map state. */
+    static MatchExecution executeMatch(int matchId, int adaptiveSide,
+            long seed, FactoryFeudExperimentConfig config) throws Exception {
         // Public engine RNG used for variable combat damage. The current deterministic
         // unit table has fixed damage, but recording and applying the seed is future-safe.
         UnitAction.r.setSeed(seed);
@@ -93,7 +99,8 @@ public final class FactoryFeudExperimentRunner {
         String exampleAttackOverride = firstOverride(threatAware, "type=attack");
         String exampleRetreatOverride = firstOverride(threatAware, "type=retreat");
 
-        return new FactoryFeudExperimentRecord(matchId, config.getMapPath(), seed,
+        FactoryFeudExperimentRecord record = new FactoryFeudExperimentRecord(
+                matchId, config.getMapPath(), seed,
                 adaptiveSide, result.getScore(0), result.getScore(1), adaptiveScore,
                 fixedScore, outcome, result.getCycles(), player0Survivors,
                 player1Survivors, adaptiveSide == 0 ? player0Survivors : player1Survivors,
@@ -109,6 +116,29 @@ public final class FactoryFeudExperimentRunner {
                 adaptiveSide == 0 ? player0SurvivingWorkers : player1SurvivingWorkers,
                 adaptiveSide == 0 ? player1SurvivingWorkers : player0SurvivingWorkers,
                 exampleAttackOverride, exampleRetreatOverride);
+        int remainingCocoa = 0;
+        for (Unit unit : gameState.getUnits()) {
+            if (unit.getType().isResource) remainingCocoa += unit.getResources();
+        }
+        List<String> tacticalHistory = threatAware == null
+                ? new ArrayList<String>() : threatAware.getTacticalOverrideHistory();
+        return new MatchExecution(record, remainingCocoa,
+                adaptive.getRoleChangeHistory(), tacticalHistory);
+    }
+
+    static final class MatchExecution {
+        final FactoryFeudExperimentRecord record;
+        final int remainingCocoa;
+        final List<String> roleChangeHistory;
+        final List<String> tacticalOverrideHistory;
+
+        MatchExecution(FactoryFeudExperimentRecord record, int remainingCocoa,
+                List<String> roleChangeHistory, List<String> tacticalOverrideHistory) {
+            this.record = record;
+            this.remainingCocoa = remainingCocoa;
+            this.roleChangeHistory = new ArrayList<>(roleChangeHistory);
+            this.tacticalOverrideHistory = new ArrayList<>(tacticalOverrideHistory);
+        }
     }
 
     private static FactoryFeudExperimentRecord.DeliveryMetrics deliveryMetrics(

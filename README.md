@@ -1,6 +1,6 @@
 # Factory Feud (CSC 584)
 
-Factory Feud is a cocoa-delivery RTS project built on **microRTS**. It includes fixed-role and adaptive AI, five handcrafted maps (D1), and procedurally generated maps (D2).
+Factory Feud is a cocoa-delivery RTS project built on **microRTS**. It includes fixed-role and adaptive AI, five handcrafted maps (D1), procedurally generated maps (D2), and the integrated D3 evaluation.
 
 ## Requirements
 
@@ -70,6 +70,38 @@ ant -Dfactoryfeud.ai.map=maps/factory-feud/generated/factory-feud-pcg-v1-chokepo
 ```
 
 For generator parameters and CSV formats, see [`docs/FACTORY_FEUD_D2.md`](docs/FACTORY_FEUD_D2.md).
+
+## Deliverable 3: Integrated evaluation
+
+The D3 workflow deterministically selects 24 accepted D2 maps: two lexicographically
+first map IDs from every family/density-preset stratum (8 maps per family). It runs
+both side assignments for `AdaptiveRoleAI` and the tactical-off
+`OldAdaptiveRoleAI`, each against `FixedRoleAI`, for 96 matches total.
+
+```bash
+# Build and run D3-specific tests (includes a 2-cycle balanced smoke run)
+ant clean build
+ant factory-feud-d3-tests
+
+# Optional short command-line smoke experiment (48 matches × 25 cycles)
+ant factory-feud-d3-smoke
+
+# Full 24-map, 96-match, 500-cycle experiment
+ant factory-feud-d3-experiment
+
+# Reproducible descriptive analysis and figures (requires matplotlib)
+ant factory-feud-d3-plot
+```
+
+The full run writes `selection-manifest.csv`, `match-results.csv`,
+`match-failures.csv`, and `summary.md` under `results/factory-feud-d3/`. Plotting
+adds six PNG figures, `terrain-associations.csv`, and `analysis.md` under its
+`plots/` subdirectory. The result files are separate from D1/D2 outputs.
+
+Configuration can be overridden with Ant properties such as
+`factoryfeud.d3.seed`, `factoryfeud.d3.metadata`, and
+`factoryfeud.d3.output.dir`. See [`docs/FACTORY_FEUD_D3.md`](docs/FACTORY_FEUD_D3.md)
+for the design, metrics, hypotheses, and limitations.
 
 ## Credits
 

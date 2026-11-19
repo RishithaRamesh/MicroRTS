@@ -1,0 +1,17 @@
+predictor,response,pearson_r,unit_of_analysis,n
+actual_obstacle_density,adaptive_margin,-0.717956,side-paired map,24
+mean_path_length,adaptive_margin,-0.278290,side-paired map,24
+route_imbalance,adaptive_margin,-0.368656,side-paired map,24
+dead_end_count,adaptive_margin,-0.142651,side-paired map,24
+mean_path_length,combined_delivery_throughput,-0.596708,side-paired map,24
+route_imbalance,absolute_side_advantage,0.762448,side-paired map,24
+actual_obstacle_density,carrier_hits_received,-0.053531,side-paired map,24
+actual_obstacle_density,adaptive_margin,-0.531772,side-paired map within OPEN,8
+actual_obstacle_density,adaptive_margin,-0.889848,side-paired map within OBSTACLE_FIELD,8
+actual_obstacle_density,adaptive_margin,-0.497309,side-paired map within CHOKEPOINT,8
+mean_path_length,combined_delivery_throughput,-0.638349,side-paired map within OPEN,8
+mean_path_length,combined_delivery_throughput,-0.169605,side-paired map within OBSTACLE_FIELD,8
+mean_path_length,combined_delivery_throughput,-0.922249,side-paired map within CHOKEPOINT,8
+route_imbalance,absolute_side_advantage,-0.113961,side-paired map within OPEN,8
+route_imbalance,absolute_side_advantage,0.871426,side-paired map within OBSTACLE_FIELD,8
+route_imbalance,absolute_side_advantage,0.772028,side-paired map within CHOKEPOINT,8

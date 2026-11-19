@@ -1,0 +1,13 @@
+selection_order,map_id,family,density_preset,map_seed,output_path,actual_density,mean_path_length,route_imbalance,dead_end_count
+1,open-001-sparse-seed-584000,OPEN,SPARSE,584000,maps/factory-feud/generated/factory-feud-pcg-v1-open-001-sparse-seed-584000-16x12.xml,0.05208333,6.500,1,0
+2,open-002-low-seed-584001,OPEN,LOW,584001,maps/factory-feud/generated/factory-feud-pcg-v1-open-002-low-seed-584001-16x12.xml,0.07812500,7.500,1,7
+3,open-003-medium-seed-584002,OPEN,MEDIUM,584002,maps/factory-feud/generated/factory-feud-pcg-v1-open-003-medium-seed-584002-16x12.xml,0.10937500,6.500,1,4
+4,open-004-high-seed-584003,OPEN,HIGH,584003,maps/factory-feud/generated/factory-feud-pcg-v1-open-004-high-seed-584003-16x12.xml,0.14062500,8.500,3,10
+5,obstacle-field-001-sparse-seed-1584000,OBSTACLE_FIELD,SPARSE,1584000,maps/factory-feud/generated/factory-feud-pcg-v1-obstacle-field-001-sparse-seed-1584000-16x12.xml,0.09895833,7.500,1,2
+6,obstacle-field-002-low-seed-1584001,OBSTACLE_FIELD,LOW,1584001,maps/factory-feud/generated/factory-feud-pcg-v1-obstacle-field-002-low-seed-1584001-16x12.xml,0.14062500,8.500,3,4
+7,obstacle-field-003-medium-seed-1584002,OBSTACLE_FIELD,MEDIUM,1584002,maps/factory-feud/generated/factory-feud-pcg-v1-obstacle-field-003-medium-seed-1584002-16x12.xml,0.18229167,8.500,3,2
+8,obstacle-field-004-high-seed-1584003,OBSTACLE_FIELD,HIGH,1584003,maps/factory-feud/generated/factory-feud-pcg-v1-obstacle-field-004-high-seed-1584003-16x12.xml,0.21875000,6.500,1,4
+9,chokepoint-001-sparse-seed-2584000,CHOKEPOINT,SPARSE,2584000,maps/factory-feud/generated/factory-feud-pcg-v1-chokepoint-001-sparse-seed-2584000-16x12.xml,0.09895833,7.500,3,0
+10,chokepoint-002-low-seed-2584001,CHOKEPOINT,LOW,2584001,maps/factory-feud/generated/factory-feud-pcg-v1-chokepoint-002-low-seed-2584001-16x12.xml,0.14062500,7.500,3,1
+11,chokepoint-003-medium-seed-2584002,CHOKEPOINT,MEDIUM,2584002,maps/factory-feud/generated/factory-feud-pcg-v1-chokepoint-003-medium-seed-2584002-16x12.xml,0.18229167,6.500,1,2
+12,chokepoint-004-high-seed-2584003,CHOKEPOINT,HIGH,2584003,maps/factory-feud/generated/factory-feud-pcg-v1-chokepoint-004-high-seed-2584003-16x12.xml,0.21875000,7.500,1,2
